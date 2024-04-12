@@ -1,0 +1,23 @@
+# name: test/sql/alex.test
+# description: test alex extension
+# group: [alex]
+
+# Before we load the extension, this will fail
+statement error
+SELECT alex('Sam');
+----
+Catalog Error: Scalar Function with name alex does not exist!
+
+# Require statement will ensure this test is run with this extension loaded
+require alex
+
+# Confirm the extension works
+query I
+SELECT alex('Sam');
+----
+Alex Sam 🐥
+
+query I
+SELECT alex_openssl_version('Michael');
+----
+<REGEX>:Alex Michael, my linked OpenSSL version is OpenSSL.*
