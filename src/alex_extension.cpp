@@ -12,6 +12,8 @@
 #include "duckdb/main/database.hpp"
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/main/client_data.hpp"
+#include "duckdb/main/query_result.hpp"
+#include "duckdb/common/types/vector.hpp"
 // OpenSSL linked through vcpkg
 #include <openssl/opensslv.h>
 #include "ALEX/src/core/alex.h"
@@ -62,6 +64,31 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
 
     QualifiedName qname = GetQualifiedName(context, table_name);
     CheckIfTableExists(context, qname);
+    auto &table = Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name);
+    // std::cout<<"Table type "<<table.type;
+    // std::cout<<"Table name "<<table.name;
+    // for (auto &cd : table.GetColumns().Logical()) {
+	// 	std::cout<<"Col "<<cd.GetName();
+    //     // use this column to get the values in the column
+
+	// }
+    string query = "SELECT * FROM "+table_name+";";
+    std::cout<<"Query "<<query<<"\n";
+    //auto prepare = context.Prepare(query);
+    
+    
+    unique_ptr<QueryResult> result = context.Query(query,true);
+    std::cout<<"Query executed ";
+    auto chunk = result->Fetch();
+    std::cout<<"Chunk fetched ";
+    vector<Vector> data = chunk->data;
+    std::cout<<"Data fetched ";
+    for(auto data_val : data){
+        data_val.Print();
+    }
+    std::cout<<"All done ";
+
+    
 
     // Retrieve the column values from the table
     // auto &catalog = Catalog::GetCatalog(context.db);
