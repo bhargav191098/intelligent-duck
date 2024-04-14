@@ -65,6 +65,25 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     QualifiedName qname = GetQualifiedName(context, table_name);
     CheckIfTableExists(context, qname);
     auto &table = Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name);
+    // unique_ptr<FunctionData> bind_data;
+    // TableFunction scan_function = table.GetScanFunction(context, bind_data);
+    // auto scan_data = scan_function.function;;
+	// optional_ptr<LocalTableFunctionState> local_state;
+	// optional_ptr<GlobalTableFunctionState> global_state;
+    // optional_ptr<static FunctionData>b = bind_data.get();
+    // TableFunctionInput input(b, local_state, global_state);
+    // DataChunk chunk;
+    // std::cout<<"Scan data "<<scan_data;
+    // while(true){
+    //     scan_function.function(context, input, chunk);
+    //     std::cout<<"Chunk hey!"<<std::endl;
+    //     if(chunk.size() == 0){
+    //         break;
+    //     }
+    // }
+    // auto &catalog = Catalog::GetCatalog(context.db);
+    // auto table = catalog.GetTable(context, DEFAULT_SCHEMA, table_name);
+    // auto rows = table->Scan(transaction);
     // std::cout<<"Table type "<<table.type;
     // std::cout<<"Table name "<<table.name;
     // for (auto &cd : table.GetColumns().Logical()) {
@@ -73,20 +92,28 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
 
 	// }
     string query = "SELECT * FROM "+table_name+";";
-    std::cout<<"Query "<<query<<"\n";
-    //auto prepare = context.Prepare(query);
+    // std::cout<<"Query "<<query<<"\n";
+    // //auto prepare = context.Prepare(query);
+
+    duckdb::Connection con(*context.db);
+    unique_ptr<MaterializedQueryResult> result = con.Query(query);
+    std::cout<<result->ToString()<<"\n";
+    // std::cout<<"Query executed ";
+    // auto chunk = result->Fetch();
+    // std::cout<<"Chunk fetched ";
+    // vector<Vector> data = chunk->data;
     
-    
-    unique_ptr<QueryResult> result = context.Query(query,true);
-    std::cout<<"Query executed ";
-    auto chunk = result->Fetch();
-    std::cout<<"Chunk fetched ";
-    vector<Vector> data = chunk->data;
-    std::cout<<"Data fetched ";
-    for(auto data_val : data){
-        data_val.Print();
-    }
-    std::cout<<"All done ";
+    // std::cout<<"Data fetched ";
+    // for(auto data_val : data){
+    //     std::cout<<"New element in the vector \n";
+    //     data_ptr_t ptr_data = data_val.GetData();
+    //     buffer_ptr<VectorBuffer> bfr = data_val.GetBuffer();
+    //     std::cout<<"Buffer pointer "<<bfr-><<"\n";
+    //     std::cout<<"Data pointer "<<ptr_data<<"\n";
+
+    //     data_val.Print();
+    // }
+    // std::cout<<"All done ";
 
     
 
