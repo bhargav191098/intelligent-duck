@@ -28,8 +28,10 @@ static QualifiedName GetQualifiedName(ClientContext &context, const string &qnam
 	return qname;
 }
 
+string doesitexist = "";
+
 static void CheckIfTableExists(ClientContext &context, QualifiedName &qname) {
-	std::cout<< "Internal call "<<Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name).name;
+	//std::cout<< "Internal call "<<Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name).name;
     unique_ptr<FunctionData> bind_data;
     //auto scan_function = Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name).GetScanFunction(context, bind_data);
     //std::cout<<"Bind info "<<scan_function.get_bind_info;
@@ -58,70 +60,66 @@ inline void AlexOpenSSLVersionScalarFun(DataChunk &args, ExpressionState &state,
         });
 }
 
+
 void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParameters &parameters){
     string table_name = parameters.values[0].GetValue<string>();
     string column_name = parameters.values[1].GetValue<string>();
 
+    std::cout<<"String does it exist : "<<doesitexist<<"\n";
+    doesitexist = "Yes";
+
     QualifiedName qname = GetQualifiedName(context, table_name);
     CheckIfTableExists(context, qname);
     auto &table = Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name);
-    // unique_ptr<FunctionData> bind_data;
-    // TableFunction scan_function = table.GetScanFunction(context, bind_data);
-    // auto scan_data = scan_function.function;;
-	// optional_ptr<LocalTableFunctionState> local_state;
-	// optional_ptr<GlobalTableFunctionState> global_state;
-    // optional_ptr<static FunctionData>b = bind_data.get();
-    // TableFunctionInput input(b, local_state, global_state);
-    // DataChunk chunk;
-    // std::cout<<"Scan data "<<scan_data;
-    // while(true){
-    //     scan_function.function(context, input, chunk);
-    //     std::cout<<"Chunk hey!"<<std::endl;
-    //     if(chunk.size() == 0){
-    //         break;
-    //     }
-    // }
-    // auto &catalog = Catalog::GetCatalog(context.db);
-    // auto table = catalog.GetTable(context, DEFAULT_SCHEMA, table_name);
-    // auto rows = table->Scan(transaction);
-    // std::cout<<"Table type "<<table.type;
-    // std::cout<<"Table name "<<table.name;
-    // for (auto &cd : table.GetColumns().Logical()) {
-	// 	std::cout<<"Col "<<cd.GetName();
-    //     // use this column to get the values in the column
-
-	// }
+    
     string query = "SELECT * FROM "+table_name+";";
     // std::cout<<"Query "<<query<<"\n";
     // //auto prepare = context.Prepare(query);
 
     duckdb::Connection con(*context.db);
     unique_ptr<MaterializedQueryResult> result = con.Query(query);
+    std::cout<<" Through toString "<<"\n";
     std::cout<<result->ToString()<<"\n";
-    // std::cout<<"Query executed ";
-    // auto chunk = result->Fetch();
-    // std::cout<<"Chunk fetched ";
-    // vector<Vector> data = chunk->data;
-    
-    // std::cout<<"Data fetched ";
-    // for(auto data_val : data){
-    //     std::cout<<"New element in the vector \n";
-    //     data_ptr_t ptr_data = data_val.GetData();
-    //     buffer_ptr<VectorBuffer> bfr = data_val.GetBuffer();
-    //     std::cout<<"Buffer pointer "<<bfr-><<"\n";
-    //     std::cout<<"Data pointer "<<ptr_data<<"\n";
+    std::vector<unique_ptr<Base>> results= result->getContents();
+    std::cout<<"Through custom function "<<"\n";
+    for (const auto& item : results) {
+       
+    //    std::cout<<string(item.get())<<std::endl;
 
-    //     data_val.Print();
+        if (auto* intData = dynamic_cast<IntData*>(item.get())) {
+            std::cout << "Int Value: " << intData->value << std::endl;
+        } else if (auto* doubleData = dynamic_cast<DoubleData*>(item.get())) {
+            std::cout << "Double Value: " << doubleData->value << std::endl;
+        } else if (auto* stringData = dynamic_cast<StringData*>(item.get())) {
+            std::cout << "String Value: " << stringData->value << std::endl;
+        } else if (auto* boolData = dynamic_cast<BoolData*>(item.get())) {
+            std::cout << "Boolean Value: " << boolData->value << std::endl;
+        }
+    }
+
+    // ColumnDataCollection col = result->Collection();
+    // std::cout<<"Collection got \n";
+    // std::cout<<"Success\n";
+    // std::cout<<"Column count : "<<col.ColumnCount()<<"\n";
+    // std::cout<<"Row count : "<<col.Count()<<"\n";
+    // for (auto &row : col.Rows()) {
+    //     for (idx_t col_idx = 0; col_idx < col.ColumnCount(); col_idx++) {
+    //         auto val = row.GetValue(col_idx);
+    //         auto row_address = row.RowIndex();
+    //         std::cout<<"Row address : "<<row_address<<"\n";
+    //         if(val.IsNull()){
+    //             std::cout<<"NULL\n";
+    //         }
+    //         else{
+    //             std::cout<<val.ToString()<<"\n";
+    //         }
+    //         //result += val.IsNull() ? "NULL" : StringUtil::Replace(val.ToString(), string("\0", 1), "\\0");
+    //         std::cout<<"Result inter "<<result<<" "<<row_address<<"\n";
+    //         //result += string(row_address);
+    //     }
     // }
-    // std::cout<<"All done ";
-
+   
     
-
-    // Retrieve the column values from the table
-    // auto &catalog = Catalog::GetCatalog(context.db);
-    // auto table = catalog.GetTable(context, DEFAULT_SCHEMA, table_name);
-    // auto rows = table->Scan(transaction);
-    // auto column = table->GetColumn(column_name);
 
     std::cout <<"Alex index pragma function called with table name: " << table_name << " and column name: " << column_name << std::endl;
 }
