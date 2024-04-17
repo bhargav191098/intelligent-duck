@@ -17,6 +17,8 @@
 // OpenSSL linked through vcpkg
 #include <openssl/opensslv.h>
 #include "ALEX/src/core/alex.h"
+#define KEY_TYPE int
+#define PAYLOAD_TYPE int
 
 namespace duckdb {
 
@@ -58,6 +60,43 @@ inline void AlexOpenSSLVersionScalarFun(DataChunk &args, ExpressionState &state,
                                                      ", my linked OpenSSL version is " +
                                                      OPENSSL_VERSION_TEXT );;
         });
+}
+
+alex::Alex<KEY_TYPE, PAYLOAD_TYPE> index;
+
+void functionTryAlex(){
+    std::cout<<"Simply trying out alex "<<"\n";
+    const int num_keys = 100;
+    std::pair<KEY_TYPE, PAYLOAD_TYPE> values[num_keys];
+    std::mt19937_64 gen(std::random_device{}());
+    std::uniform_int_distribution<PAYLOAD_TYPE> dis;
+    for (int i = 0; i < num_keys; i++) {
+        values[i].first = i;
+        values[i].second = dis(gen);
+    }
+
+    // Bulk load the keys [0, 100)
+    index.bulk_load(values, num_keys);
+
+    // Insert the keys [100, 200). Now there are 200 keys.
+    for (int i = num_keys; i < 2 * num_keys; i++) {
+        KEY_TYPE new_key = i;
+        PAYLOAD_TYPE new_payload = dis(gen);
+        index.insert(new_key, new_payload);
+    }
+
+    // Erase the keys [0, 10). Now there are 190 keys.
+    for (int i = 0; i < 10; i++) {
+        index.erase(i);
+    }
+}
+
+void functionSearchAlex(ClientContext &context, const FunctionParameters &parameters){
+    std::cout<<"Within search alex call "<<std::endl;
+    auto it = index.find(13);
+    if (it != index.end()) {
+        std::cout <<"Found Key"<<std::endl;
+    }
 }
 
 
@@ -119,7 +158,7 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     //     }
     // }
    
-    
+    functionTryAlex();
 
     std::cout <<"Alex index pragma function called with table name: " << table_name << " and column name: " << column_name << std::endl;
 }
@@ -136,6 +175,9 @@ static void LoadInternal(DatabaseInstance &instance) {
 
     auto create_alex_index_function = PragmaFunction::PragmaCall("create_alex_index", createAlexIndexPragmaFunction, {LogicalType::VARCHAR, LogicalType::VARCHAR}, LogicalType::INVALID);
     ExtensionUtil::RegisterFunction(instance, create_alex_index_function);
+
+    auto searchAlexDummy = PragmaFunction::PragmaCall("search_alex", functionSearchAlex, {}, LogicalType::INVALID);
+    ExtensionUtil::RegisterFunction(instance, searchAlexDummy);
 
 }
 
