@@ -63,6 +63,7 @@ inline void AlexOpenSSLVersionScalarFun(DataChunk &args, ExpressionState &state,
 }
 
 alex::Alex<KEY_TYPE, PAYLOAD_TYPE> index;
+std::vector<vector<unique_ptr<Base> > > results;
 
 void functionTryAlex(){
     std::cout<<"Simply trying out alex "<<"\n";
@@ -91,11 +92,46 @@ void functionTryAlex(){
     }
 }
 
+void display_row(int row_id){
+    vector<unique_ptr<Base>>& vec = results.at(row_id);
+    for(int i=0;i<vec.size();i++){
+        if (auto* intData = dynamic_cast<IntData*>(vec[i].get())) {
+            std::cout << "Int Value: " << intData->value << std::endl;
+        } else if (auto* doubleData = dynamic_cast<DoubleData*>(vec[i].get())) {
+            std::cout << "Double Value: " << doubleData->value << std::endl;
+        } else if (auto* stringData = dynamic_cast<StringData*>(vec[i].get())) {
+            std::cout << "String Value: " << stringData->value << std::endl;
+        } else if (auto* boolData = dynamic_cast<BoolData*>(vec[i].get())) {
+            std::cout << "Boolean Value: " << boolData->value << std::endl;
+        }
+    }
+    // for (vector<unique_ptr<Base>> vec : results[row_id]) {
+    //     for(const auto &item : vec){
+    //         if (auto* intData = dynamic_cast<IntData*>(item.get())) {
+    //         std::cout << "Int Value: " << intData->value << std::endl;
+    //         } else if (auto* doubleData = dynamic_cast<DoubleData*>(item.get())) {
+    //         std::cout << "Double Value: " << doubleData->value << std::endl;
+    //         } else if (auto* stringData = dynamic_cast<StringData*>(item.get())) {
+    //         std::cout << "String Value: " << stringData->value << std::endl;
+    //         } else if (auto* boolData = dynamic_cast<BoolData*>(item.get())) {
+    //         std::cout << "Boolean Value: " << boolData->value << std::endl;
+    //         }
+    //     }
+        
+    // }
+}
+
 void functionSearchAlex(ClientContext &context, const FunctionParameters &parameters){
     std::cout<<"Within search alex call "<<std::endl;
-    auto it = index.find(13);
+    string table_name = parameters.values[0].GetValue<string>();
+    string column_name = parameters.values[1].GetValue<string>();
+    int search_key = parameters.values[2].GetValue<int>();
+    std::cout<<"Searching for "<<search_key<<"\n";
+
+    auto it = index.find(search_key);
     if (it != index.end()) {
-        std::cout <<"Found Key"<<std::endl;
+        int row_id = it.payload();
+        display_row(row_id);
     }
 }
 
@@ -110,31 +146,69 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     QualifiedName qname = GetQualifiedName(context, table_name);
     CheckIfTableExists(context, qname);
     auto &table = Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name);
-    
+    auto &columnList = table.GetColumns();
+    vector<string>columnNames = columnList.GetColumnNames();
+    int count = 0;
+    int column_index = -1;
+    for(auto item:columnNames){
+        std::cout<<"Column name "<<item<<"\n";
+        if(item == column_name){
+            column_index = count;
+            std::cout<<"Column name found "<<count<<"\n";
+        }
+        count++;
+    }
+
     string query = "SELECT * FROM "+table_name+";";
+
     // std::cout<<"Query "<<query<<"\n";
     // //auto prepare = context.Prepare(query);
-
+    vector<int>keys;
+    vector<int>payloads;
     duckdb::Connection con(*context.db);
     unique_ptr<MaterializedQueryResult> result = con.Query(query);
     std::cout<<" Through toString "<<"\n";
     std::cout<<result->ToString()<<"\n";
-    std::vector<unique_ptr<Base>> results= result->getContents();
+    results = result->getContents();
     std::cout<<"Through custom function "<<"\n";
-    for (const auto& item : results) {
-       
-    //    std::cout<<string(item.get())<<std::endl;
-
-        if (auto* intData = dynamic_cast<IntData*>(item.get())) {
-            std::cout << "Int Value: " << intData->value << std::endl;
-        } else if (auto* doubleData = dynamic_cast<DoubleData*>(item.get())) {
-            std::cout << "Double Value: " << doubleData->value << std::endl;
-        } else if (auto* stringData = dynamic_cast<StringData*>(item.get())) {
-            std::cout << "String Value: " << stringData->value << std::endl;
-        } else if (auto* boolData = dynamic_cast<BoolData*>(item.get())) {
-            std::cout << "Boolean Value: " << boolData->value << std::endl;
+    int num_keys = results.size();
+    std::cout<<"Num Keys : "<<num_keys<<"\n";
+    std::pair<KEY_TYPE, PAYLOAD_TYPE> values[num_keys];
+    int max_key = INT_MIN;
+    for (int i=0;i<results.size();i++){
+        int row_id = i;
+        int key_ = (dynamic_cast<IntData*>(results[i][column_index].get())->value);
+        values[i].first = key_;
+        if(values[i].first>max_key){
+            max_key = values[i].first;
         }
+        std::cout<<"Key being loaded into the index : "<<values[i].first<<"\n";
+        values[i].second = i;
+        index.insert(key_,i);
     }
+    std::cout<<"Max key : "<<max_key<<"\n";
+    std::cout<<"Bulk Loading data ... "<<"\n";
+
+    auto stats = index.get_stats();
+    std::cout << "Final num keys: " << stats.num_keys
+            << std::endl;  // expected: 199
+    //index.bulk_load(values, max_key+1);
+
+    
+
+
+    // for (const auto& item : results) {
+
+    //     if (auto* intData = dynamic_cast<IntData*>(item.get())) {
+    //         std::cout << "Int Value: " << intData->value << std::endl;
+    //     } else if (auto* doubleData = dynamic_cast<DoubleData*>(item.get())) {
+    //         std::cout << "Double Value: " << doubleData->value << std::endl;
+    //     } else if (auto* stringData = dynamic_cast<StringData*>(item.get())) {
+    //         std::cout << "String Value: " << stringData->value << std::endl;
+    //     } else if (auto* boolData = dynamic_cast<BoolData*>(item.get())) {
+    //         std::cout << "Boolean Value: " << boolData->value << std::endl;
+    //     }
+    // }
 
     // ColumnDataCollection col = result->Collection();
     // std::cout<<"Collection got \n";
@@ -158,7 +232,7 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     //     }
     // }
    
-    functionTryAlex();
+    //functionTryAlex();
 
     std::cout <<"Alex index pragma function called with table name: " << table_name << " and column name: " << column_name << std::endl;
 }
@@ -176,7 +250,7 @@ static void LoadInternal(DatabaseInstance &instance) {
     auto create_alex_index_function = PragmaFunction::PragmaCall("create_alex_index", createAlexIndexPragmaFunction, {LogicalType::VARCHAR, LogicalType::VARCHAR}, LogicalType::INVALID);
     ExtensionUtil::RegisterFunction(instance, create_alex_index_function);
 
-    auto searchAlexDummy = PragmaFunction::PragmaCall("search_alex", functionSearchAlex, {}, LogicalType::INVALID);
+    auto searchAlexDummy = PragmaFunction::PragmaCall("search_alex", functionSearchAlex, {LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::INTEGER},{});
     ExtensionUtil::RegisterFunction(instance, searchAlexDummy);
 
 }
