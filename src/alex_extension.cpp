@@ -172,12 +172,11 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     vector<int>payloads;
     duckdb::Connection con(*context.db);
     unique_ptr<MaterializedQueryResult> result = con.Query(query);
-    std::cout<<" Through toString "<<"\n";
-    std::cout<<result->ToString()<<"\n";
+    
     results = result->getContents();
-
     int num_keys = results.size();
     std::cout<<"Num Keys : "<<num_keys<<"\n";
+    
 
     map<KEY_TYPE, PAYLOAD_TYPE > values;
     int max_key = INT_MIN;
@@ -187,8 +186,7 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
         int key_ = (dynamic_cast<IntData*>(results[i][column_index].get())->value);
         values.insert({key_,i});
     }
-    std::cout<<"Max key : "<<max_key<<"\n";
-    std::cout<<"Bulk Loading data ... "<<"\n";
+    std::cout<<"Bulk Loading column data into index "<<"\n";
     std::pair<KEY_TYPE, PAYLOAD_TYPE> bulk_load_values[num_keys];
 
     int pos = 0;
@@ -196,59 +194,17 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
         bulk_load_values[pos] = {it->first,it->second};
         pos++;
     }
-    std::cout<<"Is the array sorted? "<<"\n";
-    for(int i=0;i<num_keys;i++){
-        std::cout<<bulk_load_values[i].first<<","<<bulk_load_values[i].second<<" ";
-    }
-    std::cout<<"\n";
-    std::cout<<"Index "<<index.size()<<"\n";
+    std::cout<<"Index size before bulk loading "<<index.size()<<"\n";
     index.bulk_load(bulk_load_values, num_keys);
     auto stats = index.get_stats();
-    std::cout << "Final num keys: " << stats.num_keys
-            << std::endl;  // expected: 199
-    //index.bulk_load(values, max_key+1);
+    std::cout<<"Stats about the index \n";
+    std::cout<<"Number of keys : "<<stats.num_keys<<"\n";
+    std::cout<<"Number of model nodes : "<<stats.num_model_nodes<<"\n";
+    std::cout<<"Number of data nodes: "<<stats.num_data_nodes<<"\n";
+    std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n"; 
+    std::cout<<"Index size after bulk loading "<<index.size()<<"\n";
+    std::cout<<"Index created successfully "<<"\n";
 
-    
-
-
-    // for (const auto& item : results) {
-
-    //     if (auto* intData = dynamic_cast<IntData*>(item.get())) {
-    //         std::cout << "Int Value: " << intData->value << std::endl;
-    //     } else if (auto* doubleData = dynamic_cast<DoubleData*>(item.get())) {
-    //         std::cout << "Double Value: " << doubleData->value << std::endl;
-    //     } else if (auto* stringData = dynamic_cast<StringData*>(item.get())) {
-    //         std::cout << "String Value: " << stringData->value << std::endl;
-    //     } else if (auto* boolData = dynamic_cast<BoolData*>(item.get())) {
-    //         std::cout << "Boolean Value: " << boolData->value << std::endl;
-    //     }
-    // }
-
-    // ColumnDataCollection col = result->Collection();
-    // std::cout<<"Collection got \n";
-    // std::cout<<"Success\n";
-    // std::cout<<"Column count : "<<col.ColumnCount()<<"\n";
-    // std::cout<<"Row count : "<<col.Count()<<"\n";
-    // for (auto &row : col.Rows()) {
-    //     for (idx_t col_idx = 0; col_idx < col.ColumnCount(); col_idx++) {
-    //         auto val = row.GetValue(col_idx);
-    //         auto row_address = row.RowIndex();
-    //         std::cout<<"Row address : "<<row_address<<"\n";
-    //         if(val.IsNull()){
-    //             std::cout<<"NULL\n";
-    //         }
-    //         else{
-    //             std::cout<<val.ToString()<<"\n";
-    //         }
-    //         //result += val.IsNull() ? "NULL" : StringUtil::Replace(val.ToString(), string("\0", 1), "\\0");
-    //         std::cout<<"Result inter "<<result<<" "<<row_address<<"\n";
-    //         //result += string(row_address);
-    //     }
-    // }
-   
-    //functionTryAlex();
-
-    std::cout <<"Alex index pragma function called with table name: " << table_name << " and column name: " << column_name << std::endl;
 }
 
 static void LoadInternal(DatabaseInstance &instance) {
