@@ -1,0 +1,307 @@
+CREATE TABLE employee(emp_id INT,doc VARCHAR);
+
+
+INSERT INTO employee VALUES(4330, 'Aarav');
+
+
+INSERT INTO employee VALUES(3563, 'Vihaan');
+
+
+INSERT INTO employee VALUES(6957, 'Vivaan');
+
+
+INSERT INTO employee VALUES(8325, 'Ananya');
+
+
+INSERT INTO employee VALUES(2365, 'Diya');
+
+
+INSERT INTO employee VALUES(1580, 'Ishaan');
+
+
+INSERT INTO employee VALUES(6692, 'Pranav');
+
+
+INSERT INTO employee VALUES(3301, 'Saanvi');
+
+
+INSERT INTO employee VALUES(9528, 'Arjun');
+
+
+INSERT INTO employee VALUES(9541, 'Veer');
+
+
+INSERT INTO employee VALUES(6534, 'Sara');
+
+
+INSERT INTO employee VALUES(1967, 'Riya');
+
+
+INSERT INTO employee VALUES(856, 'Yash');
+
+
+INSERT INTO employee VALUES(3957, 'Aditi');
+
+
+INSERT INTO employee VALUES(7606, 'Kavya');
+
+
+INSERT INTO employee VALUES(5166, 'Rohan');
+
+
+INSERT INTO employee VALUES(4570, 'Mohit');
+
+
+INSERT INTO employee VALUES(864, 'Anika');
+
+
+INSERT INTO employee VALUES(6160, 'Raj');
+
+
+INSERT INTO employee VALUES(4147, 'Simran');
+
+
+INSERT INTO employee VALUES(9830, 'Arnav');
+
+
+INSERT INTO employee VALUES(2356, 'Ayaan');
+
+
+INSERT INTO employee VALUES(7609, 'Krishna');
+
+
+INSERT INTO employee VALUES(7910, 'Surya');
+
+
+INSERT INTO employee VALUES(1535, 'Tanvi');
+
+
+INSERT INTO employee VALUES(6640, 'Gaurav');
+
+
+INSERT INTO employee VALUES(2182, 'Priya');
+
+
+INSERT INTO employee VALUES(7718, 'Ritika');
+
+
+INSERT INTO employee VALUES(6570, 'Nikhil');
+
+
+INSERT INTO employee VALUES(1536, 'Amit');
+
+
+INSERT INTO employee VALUES(3475, 'Rahul');
+
+
+INSERT INTO employee VALUES(2646, 'Sanjay');
+
+
+INSERT INTO employee VALUES(7111, 'Karan');
+
+
+INSERT INTO employee VALUES(3401, 'Varun');
+
+
+INSERT INTO employee VALUES(2300, 'Rishi');
+
+
+INSERT INTO employee VALUES(388, 'Sidharth');
+
+
+INSERT INTO employee VALUES(8898, 'Abhinav');
+
+
+INSERT INTO employee VALUES(4464, 'Rajesh');
+
+
+INSERT INTO employee VALUES(5177, 'Kriti');
+
+
+INSERT INTO employee VALUES(525, 'Pooja');
+
+
+INSERT INTO employee VALUES(4976, 'Deepa');
+
+
+INSERT INTO employee VALUES(4611, 'Lakshmi');
+
+
+INSERT INTO employee VALUES(5790, 'Aarti');
+
+
+INSERT INTO employee VALUES(6050, 'Parth');
+
+
+INSERT INTO employee VALUES(3618, 'Siddharth');
+
+
+INSERT INTO employee VALUES(7790, 'Manish');
+
+
+INSERT INTO employee VALUES(2845, 'Dinesh');
+
+
+INSERT INTO employee VALUES(8134, 'Anil');
+
+
+INSERT INTO employee VALUES(8620, 'Sunil');
+
+
+INSERT INTO employee VALUES(9712, 'Harish');
+
+
+INSERT INTO employee VALUES(6511, 'Gopal');
+
+
+INSERT INTO employee VALUES(5641, 'Jai');
+
+
+INSERT INTO employee VALUES(9412, 'Vikram');
+
+
+INSERT INTO employee VALUES(7809, 'Ravi');
+
+
+INSERT INTO employee VALUES(9689, 'Alok');
+
+
+INSERT INTO employee VALUES(9148, 'Vishal');
+
+
+INSERT INTO employee VALUES(3526, 'Sachin');
+
+
+INSERT INTO employee VALUES(3386, 'Kiran');
+
+
+INSERT INTO employee VALUES(8519, 'Narendra');
+
+
+INSERT INTO employee VALUES(1729, 'Lalit');
+
+
+INSERT INTO employee VALUES(5047, 'Avinash');
+
+
+INSERT INTO employee VALUES(12, 'Suresh');
+
+
+INSERT INTO employee VALUES(2468, 'Harsha');
+
+
+INSERT INTO employee VALUES(681, 'Anjali');
+
+
+INSERT INTO employee VALUES(6209, 'Chitra');
+
+
+INSERT INTO employee VALUES(8744, 'Esha');
+
+
+INSERT INTO employee VALUES(4140, 'Geeta');
+
+
+INSERT INTO employee VALUES(9210, 'Heena');
+
+
+INSERT INTO employee VALUES(6322, 'Indira');
+
+
+INSERT INTO employee VALUES(4857, 'Jyoti');
+
+
+INSERT INTO employee VALUES(796, 'Kamala');
+
+
+INSERT INTO employee VALUES(3699, 'Leela');
+
+
+INSERT INTO employee VALUES(9884, 'Mina');
+
+
+INSERT INTO employee VALUES(9201, 'Nina');
+
+
+INSERT INTO employee VALUES(9295, 'Omana');
+
+
+INSERT INTO employee VALUES(4011, 'Punita');
+
+
+INSERT INTO employee VALUES(8477, 'Radha');
+
+
+INSERT INTO employee VALUES(2006, 'Shanti');
+
+
+INSERT INTO employee VALUES(1123, 'Tara');
+
+
+INSERT INTO employee VALUES(1449, 'Uma');
+
+
+INSERT INTO employee VALUES(7182, 'Vani');
+
+
+INSERT INTO employee VALUES(2875, 'Yamini');
+
+
+INSERT INTO employee VALUES(1113, 'Zara');
+
+
+INSERT INTO employee VALUES(2858, 'Bhavna');
+
+
+INSERT INTO employee VALUES(1868, 'Chandni');
+
+
+INSERT INTO employee VALUES(9634, 'Dhara');
+
+
+INSERT INTO employee VALUES(1982, 'Falguni');
+
+
+INSERT INTO employee VALUES(2154, 'Gargi');
+
+
+INSERT INTO employee VALUES(6343, 'Hansa');
+
+
+INSERT INTO employee VALUES(8824, 'Ilina');
+
+
+INSERT INTO employee VALUES(7879, 'Jasmin');
+
+
+INSERT INTO employee VALUES(7570, 'Kalpana');
+
+
+INSERT INTO employee VALUES(365, 'Lalima');
+
+
+INSERT INTO employee VALUES(5583, 'Mehak');
+
+
+INSERT INTO employee VALUES(3361, 'Neha');
+
+
+INSERT INTO employee VALUES(18, 'Ojasvi');
+
+
+INSERT INTO employee VALUES(1164, 'Pallavi');
+
+
+INSERT INTO employee VALUES(6934, 'Rashmi');
+
+
+INSERT INTO employee VALUES(9859, 'Smita');
+
+
+INSERT INTO employee VALUES(7013, 'Tanisha');
+
+
+pragma create_alex_index('employee','emp_id');
+
+
+
