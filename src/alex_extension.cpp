@@ -16,7 +16,9 @@
 #include "duckdb/common/types/vector.hpp"
 // OpenSSL linked through vcpkg
 #include <openssl/opensslv.h>
+#include<map>
 #include "ALEX/src/core/alex.h"
+
 #define KEY_TYPE int
 #define PAYLOAD_TYPE int
 
@@ -71,12 +73,15 @@ void functionTryAlex(){
     std::pair<KEY_TYPE, PAYLOAD_TYPE> values[num_keys];
     std::mt19937_64 gen(std::random_device{}());
     std::uniform_int_distribution<PAYLOAD_TYPE> dis;
+    vector<int>arr1,arr2;
     for (int i = 0; i < num_keys; i++) {
         values[i].first = i;
         values[i].second = dis(gen);
+        arr1.push_back(values[i].first);
+        arr2.push_back(values[i].second);
     }
-
-    // Bulk load the keys [0, 100)
+    
+    //Bulk load the keys [0, 100)
     index.bulk_load(values, num_keys);
 
     // Insert the keys [100, 200). Now there are 200 keys.
@@ -170,25 +175,34 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     std::cout<<" Through toString "<<"\n";
     std::cout<<result->ToString()<<"\n";
     results = result->getContents();
-    std::cout<<"Through custom function "<<"\n";
+
     int num_keys = results.size();
     std::cout<<"Num Keys : "<<num_keys<<"\n";
-    std::pair<KEY_TYPE, PAYLOAD_TYPE> values[num_keys];
+
+    map<KEY_TYPE, PAYLOAD_TYPE > values;
     int max_key = INT_MIN;
     for (int i=0;i<results.size();i++){
+        std::pair<KEY_TYPE, PAYLOAD_TYPE> value;
         int row_id = i;
         int key_ = (dynamic_cast<IntData*>(results[i][column_index].get())->value);
-        values[i].first = key_;
-        if(values[i].first>max_key){
-            max_key = values[i].first;
-        }
-        std::cout<<"Key being loaded into the index : "<<values[i].first<<"\n";
-        values[i].second = i;
-        index.insert(key_,i);
+        values.insert({key_,i});
     }
     std::cout<<"Max key : "<<max_key<<"\n";
     std::cout<<"Bulk Loading data ... "<<"\n";
+    std::pair<KEY_TYPE, PAYLOAD_TYPE> bulk_load_values[num_keys];
 
+    int pos = 0;
+    for(auto it= values.begin();it!=values.end();it++){
+        bulk_load_values[pos] = {it->first,it->second};
+        pos++;
+    }
+    std::cout<<"Is the array sorted? "<<"\n";
+    for(int i=0;i<num_keys;i++){
+        std::cout<<bulk_load_values[i].first<<","<<bulk_load_values[i].second<<" ";
+    }
+    std::cout<<"\n";
+    std::cout<<"Index "<<index.size()<<"\n";
+    index.bulk_load(bulk_load_values, num_keys);
     auto stats = index.get_stats();
     std::cout << "Final num keys: " << stats.num_keys
             << std::endl;  // expected: 199
@@ -252,7 +266,6 @@ static void LoadInternal(DatabaseInstance &instance) {
 
     auto searchAlexDummy = PragmaFunction::PragmaCall("search_alex", functionSearchAlex, {LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::INTEGER},{});
     ExtensionUtil::RegisterFunction(instance, searchAlexDummy);
-
 }
 
 void AlexExtension::Load(DuckDB &db) {
