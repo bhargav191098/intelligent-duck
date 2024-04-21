@@ -132,11 +132,13 @@ void display_row(int row_id){
 void functionLoadBenchmark(ClientContext &context, const FunctionParameters &parameters){
     std::string tableName = parameters.values[0].GetValue<string>();
     std::string benchmarkName = parameters.values[1].GetValue<string>();
+    int benchmark_size = parameters.values[2].GetValue<int>();
     std::cout<<"Loading benchmark data - "<<benchmarkName<<"into table "<<tableName<<"\n";
     std::cout<<"The schema of the table will be {key,payload}\n";
+    std::cout<<"Number of keys  "<<benchmark_size<<"\n";
     std::string benchmarkFile = "";
     std::string benchmarkFileType = "";
-    const int NUM_KEYS = 100;
+    const int NUM_KEYS = benchmark_size;
 
     
 
@@ -179,18 +181,9 @@ void functionLoadBenchmark(ClientContext &context, const FunctionParameters &par
         string tuple_string = "";
 
         std::cout<<"Starting "<<starting<<" Ending "<<ending<<"\n";
-
-        
-        //std::copy(keys + starting, keys + ending, batch_keys);
         
         auto values = new std::pair<KEY_TYPE, PAYLOAD_TYPE>[per_batch];
         std::mt19937_64 gen_payload(std::random_device{}());
-
-        // stream << std::setprecision(std::numeric_limits<double>::max_digits10) << key;
-        // std::string rand = "(" + std::to_string(key) + ")";
-        // std::string ressy = stream.str();
-        // std::cout<<"Rand "<<rand<<"\n";
-        // std::cout<<"ressy "<<ressy<<"\n";
 
 
         for (int vti = starting; vti < ending; vti++) {
@@ -320,7 +313,7 @@ static void LoadInternal(DatabaseInstance &instance) {
     auto searchAlexDummy = PragmaFunction::PragmaCall("search_alex", functionSearchAlex, {LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::INTEGER},{});
     ExtensionUtil::RegisterFunction(instance, searchAlexDummy);
 
-    auto loadBenchmarkData = PragmaFunction::PragmaCall("benchmark",functionLoadBenchmark,{LogicalType::VARCHAR,LogicalType::VARCHAR},{});
+    auto loadBenchmarkData = PragmaFunction::PragmaCall("benchmark",functionLoadBenchmark,{LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::INTEGER},{});
     ExtensionUtil::RegisterFunction(instance,loadBenchmarkData);
 }
 
