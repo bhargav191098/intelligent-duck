@@ -18,9 +18,12 @@
 #include <openssl/opensslv.h>
 #include<map>
 #include "ALEX/src/core/alex.h"
+#include "utils.h"
 
-#define KEY_TYPE int
-#define PAYLOAD_TYPE int
+
+#define KEY_TYPE double
+#define PAYLOAD_TYPE double
+
 
 namespace duckdb {
 
@@ -72,7 +75,7 @@ void functionTryAlex(){
     const int num_keys = 100;
     std::pair<KEY_TYPE, PAYLOAD_TYPE> values[num_keys];
     std::mt19937_64 gen(std::random_device{}());
-    std::uniform_int_distribution<PAYLOAD_TYPE> dis;
+    std::uniform_real_distribution<PAYLOAD_TYPE> dis;
     vector<int>arr1,arr2;
     for (int i = 0; i < num_keys; i++) {
         values[i].first = i;
@@ -126,6 +129,99 @@ void display_row(int row_id){
     // }
 }
 
+void functionLoadBenchmark(ClientContext &context, const FunctionParameters &parameters){
+    std::string tableName = parameters.values[0].GetValue<string>();
+    std::string benchmarkName = parameters.values[1].GetValue<string>();
+    std::cout<<"Loading benchmark data - "<<benchmarkName<<"into table "<<tableName<<"\n";
+    std::cout<<"The schema of the table will be {key,payload}\n";
+    std::string benchmarkFile = "";
+    std::string benchmarkFileType = "";
+    const int NUM_KEYS = 100;
+
+    
+
+    /**
+     * Create a table with the table name.
+    */
+    std::string CREATE_QUERY = "CREATE TABLE "+tableName+"(key double, payload double);";
+    duckdb::Connection con(*context.db);
+    unique_ptr<MaterializedQueryResult> result = con.Query(CREATE_QUERY);
+    std::cout<<"Table created successfully "<<"\n";
+    int num_batches_insert = 10;
+    int per_batch = NUM_KEYS/num_batches_insert;
+    std::cout<<"Per batch insertion "<<"\n";
+    int starting = 0;
+    int ending = 0;
+    std::cout<<"Benchmark name "<<benchmarkName<<"\n";
+    if(benchmarkName.compare("lognormal")==0){
+        benchmarkFile = "/Users/bhargavkrish/Desktop/USC/Duck_Extension/trial-3/intelligent-duck/src/lognormal-190M.bin.data";
+        benchmarkFileType = "binary";
+    }
+
+    auto keys = new KEY_TYPE[NUM_KEYS];
+    bool res = load_binary_data(keys,NUM_KEYS,benchmarkFile);
+
+    std::cout<<"Res of loading "<<res<<"\n"; 
+
+    for(int i=0;i<100;i++){
+        std::cout<<"keys "<<keys[i]<<"\n";
+    }
+
+    string query = "INSERT INTO "+tableName+" VALUES ";
+
+    for(int i=0;i<num_batches_insert;i++){
+        std::cout<<"Inserting batch "<<i<<"\n";
+        
+        //KeyType batch_keys[per_batch];  // Replace KeyType with the actual type of keys
+        starting = i*per_batch;
+
+        ending = starting + per_batch;
+        string tuple_string = "";
+
+        std::cout<<"Starting "<<starting<<" Ending "<<ending<<"\n";
+
+        
+        //std::copy(keys + starting, keys + ending, batch_keys);
+        
+        auto values = new std::pair<KEY_TYPE, PAYLOAD_TYPE>[per_batch];
+        std::mt19937_64 gen_payload(std::random_device{}());
+
+        // stream << std::setprecision(std::numeric_limits<double>::max_digits10) << key;
+        // std::string rand = "(" + std::to_string(key) + ")";
+        // std::string ressy = stream.str();
+        // std::cout<<"Rand "<<rand<<"\n";
+        // std::cout<<"ressy "<<ressy<<"\n";
+
+
+        for (int vti = starting; vti < ending; vti++) {
+            //values[vti].first = keys[vti];
+            KEY_TYPE key = keys[vti];
+            PAYLOAD_TYPE random_payload = static_cast<PAYLOAD_TYPE>(gen_payload());
+            std::cout<<"dae key "<<key<<"\n";
+            std::ostringstream stream;
+            stream << std::setprecision(std::numeric_limits<double>::max_digits10) << key;
+            std::string ressy = stream.str();
+            tuple_string = tuple_string + "(" + ressy + "," + std::to_string(random_payload) + ")";
+            std::cout<<"Tuple string "<<tuple_string<<"\n";
+            if(vti!=ending-1){
+                tuple_string = tuple_string + ",";
+            }
+        }
+        string to_execute_query = query + tuple_string + ";";
+
+        std::cout<<"Inserting the Batch "<<i<<"into the database! ";
+        std::cout<<"Query used to insert "<<query<<"\n";
+        auto res = con.Query(to_execute_query);
+        if(!res->HasError()){
+            std::cout<<"Batch inserted successfully "<<"\n";
+        }else{
+            std::cout<<"Error inserting batch "<<i<<"\n";
+        }
+    }
+
+
+}
+
 void functionSearchAlex(ClientContext &context, const FunctionParameters &parameters){
     std::cout<<"Within search alex call "<<std::endl;
     string table_name = parameters.values[0].GetValue<string>();
@@ -152,6 +248,7 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     CheckIfTableExists(context, qname);
     auto &table = Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name);
     auto &columnList = table.GetColumns();
+
     vector<string>columnNames = columnList.GetColumnNames();
     int count = 0;
     int column_index = -1;
@@ -222,6 +319,9 @@ static void LoadInternal(DatabaseInstance &instance) {
 
     auto searchAlexDummy = PragmaFunction::PragmaCall("search_alex", functionSearchAlex, {LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::INTEGER},{});
     ExtensionUtil::RegisterFunction(instance, searchAlexDummy);
+
+    auto loadBenchmarkData = PragmaFunction::PragmaCall("benchmark",functionLoadBenchmark,{LogicalType::VARCHAR,LogicalType::VARCHAR},{});
+    ExtensionUtil::RegisterFunction(instance,loadBenchmarkData);
 }
 
 void AlexExtension::Load(DuckDB &db) {
