@@ -4,18 +4,8 @@ This repository is based on https://github.com/duckdb/extension-template, check 
 
 ---
 
-This extension, Alex, allow you to ... <extension_goal>.
+This extension, Alex, allow you to create an ALEX indexing structure for your database tables in DuckDB.
 
-
-## Building
-### Managing dependencies
-DuckDB extensions uses VCPKG for dependency management. Enabling VCPKG is very simple: follow the [installation instructions](https://vcpkg.io/en/getting-started) or just run the following:
-```shell
-git clone https://github.com/Microsoft/vcpkg.git
-./vcpkg/bootstrap-vcpkg.sh
-export VCPKG_TOOLCHAIN_PATH=`pwd`/vcpkg/scripts/buildsystems/vcpkg.cmake
-```
-Note: VCPKG is only required for extensions that want to rely on it for dependency management. If you want to develop an extension without dependencies, or want to do your own dependency management, just skip this step. Note that the example extension uses VCPKG to build with a dependency for instructive purposes, so when skipping this step the build may not work without removing the dependency.
 
 ### Build steps
 Now to build the extension, run:
@@ -35,15 +25,19 @@ The main binaries that will be built are:
 ## Running the extension
 To run the extension code, simply start the shell with `./build/release/duckdb`.
 
-Now we can use the features from the extension directly in DuckDB. The template contains a single scalar function `alex()` that takes a string arguments and returns a string:
-```
-D select alex('Jane') as result;
-┌───────────────┐
-│    result     │
-│    varchar    │
-├───────────────┤
-│ Alex Jane 🐥 │
-└───────────────┘
+The commands can be of the form : 
+
+pragma create_alex_index('table_name','col_id');
+
+pragma search_alex('table_name','col_id',key);
+
+Currently working on loading benchmark datasets with the command :
+
+pragma benchmark('lognormal_benchmark','lognormal');
+
+Please download the lognormal dataset and place it in the same directory as alex_extension.cpp to use the benchmark command : otherwise will not work.
+
+
 ```
 
 ## Running the tests
@@ -52,35 +46,3 @@ Different tests can be created for DuckDB extensions. The primary way of testing
 make test
 ```
 
-### Installing the deployed binaries
-To install your extension binaries from S3, you will need to do two things. Firstly, DuckDB should be launched with the
-`allow_unsigned_extensions` option set to true. How to set this will depend on the client you're using. Some examples:
-
-CLI:
-```shell
-duckdb -unsigned
-```
-
-Python:
-```python
-con = duckdb.connect(':memory:', config={'allow_unsigned_extensions' : 'true'})
-```
-
-NodeJS:
-```js
-db = new duckdb.Database(':memory:', {"allow_unsigned_extensions": "true"});
-```
-
-Secondly, you will need to set the repository endpoint in DuckDB to the HTTP url of your bucket + version of the extension
-you want to install. To do this run the following SQL query in DuckDB:
-```sql
-SET custom_extension_repository='bucket.s3.eu-west-1.amazonaws.com/<your_extension_name>/latest';
-```
-Note that the `/latest` path will allow you to install the latest extension version available for your current version of
-DuckDB. To specify a specific version, you can pass the version instead.
-
-After running these steps, you can install and load your extension using the regular INSTALL/LOAD commands in DuckDB:
-```sql
-INSTALL alex
-LOAD alex
-```
