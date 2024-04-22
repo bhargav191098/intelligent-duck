@@ -1,4 +1,5 @@
 import random
+import csv
 
 # # List of some common Indian names
 # indian_names = [
@@ -22,13 +23,37 @@ import random
 #     print(sql)
 #     print("\n")
 
-fileName = 'lognormal-190M.bin.data'
-fileName = 'longitudes-200M.bin.data'
+fileName = 'src/lognormal-190M.bin.data'
+#fileName = 'longitudes-200M.bin.data'
+
+def sortContents():
+    fileN = 'output.csv'
+    outputdata = list(csv.reader(open('output.csv',newline=''), delimiter=','))
+    print("post read")
+    outputdata = outputdata[:100]
+    sortedlist = sorted(outputdata, key=lambda row: int(row[0]), reverse=False)
+    with open('output_sorted.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(sortedlist)
+
+
 
 with open(fileName, mode='rb') as file: # b is important -> binary
     fileContent = file.read()
-    print("Len of fileContent: ", len(fileContent))
-    for item in fileContent[:190000000]:
-        print("Type : ",type(item))
-        print("Item : ",item)
-    #print(fileContent)
+    #put into a csv file
+
+    fileContent = fileContent[:190000]
+
+    with open('output.csv', 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        for item in fileContent:
+            writer.writerow([item]) 
+
+
+sortContents() 
+
+#     print("Len of fileContent: ", len(fileContent))
+#     for item in fileContent[:10]:
+#         print("Type : ",type(item))
+#         print("Item : ",item)
+#     #print(fileContent)

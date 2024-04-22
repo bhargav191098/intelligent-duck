@@ -13,7 +13,7 @@
 #include "utils.h"
 
 // Modify these if running your own workload
-#define KEY_TYPE double
+#define KEY_TYPE long long
 #define PAYLOAD_TYPE double
 
 /*
@@ -47,6 +47,7 @@ int main(int argc, char* argv[]) {
   // Read keys from file
   auto keys = new KEY_TYPE[total_num_keys];
   if (keys_file_type == "binary") {
+    std::cout<<"Loading binary data "<<std::endl;
     load_binary_data(keys, total_num_keys, keys_file_path);
   } else if (keys_file_type == "text") {
     load_text_data(keys, total_num_keys, keys_file_path);

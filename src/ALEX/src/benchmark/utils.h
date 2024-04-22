@@ -5,8 +5,10 @@
 
 template <class T>
 bool load_binary_data(T data[], int length, const std::string& file_path) {
+  std::cout<<" File path: "<<file_path<<std::endl;
   std::ifstream is(file_path.c_str(), std::ios::binary | std::ios::in);
   if (!is.is_open()) {
+    std::cout<<"Not open da dae \n";
     return false;
   }
   is.read(reinterpret_cast<char*>(data), std::streamsize(length * sizeof(T)));
