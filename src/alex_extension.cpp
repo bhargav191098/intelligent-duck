@@ -126,7 +126,7 @@ void display_row(int row_id){
     }
 }
 
-void executeQuery(duckdb::Connection con,string QUERY){
+void executeQuery(duckdb::Connection& con,string QUERY){
     unique_ptr<MaterializedQueryResult> result = con.Query(QUERY);
     if(result->HasError()){
         std::cout<<"Query execution failed "<<"\n";
@@ -137,7 +137,7 @@ void executeQuery(duckdb::Connection con,string QUERY){
 }
 
 template <typename K,typename P>
-void load_benchmark_data_into_table(std::string benchmarkFile,std::string benchmarkFileType,duckdb::Connection con,std::string tableName,int NUM_KEYS,int num_batches_insert,int per_batch){
+void load_benchmark_data_into_table(std::string benchmarkFile,std::string benchmarkFileType,duckdb::Connection& con,std::string tableName,int NUM_KEYS,int num_batches_insert,int per_batch){
     //This function will load a key and payload type agnostic data into the database.
     int starting = 0;
     int ending = 0;
@@ -170,8 +170,14 @@ void load_benchmark_data_into_table(std::string benchmarkFile,std::string benchm
             P random_payload = static_cast<P>(gen_payload());
             //std::cout<<"dae key "<<key<<"\n";
             std::ostringstream stream;
-            stream << std::setprecision(std::numeric_limits<K>::max_digits10) << key;
+            if(typeid(K)==typeid(DOUBLE_KEY_TYPE)){
+                stream << std::setprecision(std::numeric_limits<K>::max_digits10) << key;
+            }
+            else{
+                stream << key;
+            }
             std::string ressy = stream.str();
+            std::cout<<"Key "<<ressy<<"\n";
             tuple_string = tuple_string + "(" + ressy + "," + std::to_string(random_payload) + ")";
             //std::cout<<"Tuple string "<<tuple_string<<"\n";
             if(vti!=ending-1){
