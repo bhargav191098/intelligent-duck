@@ -36,6 +36,10 @@
 
 namespace duckdb {
 
+alex::Alex<DOUBLE_KEY_TYPE, INDEX_PAYLOAD_TYPE> double_alex_index;
+alex::Alex<INT64_KEY_TYPE, INDEX_PAYLOAD_TYPE> big_int_alex_index;
+alex::Alex<DOUBLE_KEY_TYPE, INDEX_PAYLOAD_TYPE> index;
+
 static QualifiedName GetQualifiedName(ClientContext &context, const string &qname_str) {
 	auto qname = QualifiedName::Parse(qname_str);
 	if (qname.schema == INVALID_SCHEMA) {
@@ -76,7 +80,7 @@ inline void AlexOpenSSLVersionScalarFun(DataChunk &args, ExpressionState &state,
         });
 }
 
-alex::Alex<DOUBLE_KEY_TYPE, INDEX_PAYLOAD_TYPE> index;
+
 int load_end_point = 0;
 std::vector<vector<unique_ptr<Base> > > results;
 
@@ -177,7 +181,6 @@ void load_benchmark_data_into_table(std::string benchmarkFile,std::string benchm
                 stream << key;
             }
             std::string ressy = stream.str();
-            std::cout<<"Key "<<ressy<<"\n";
             tuple_string = tuple_string + "(" + ressy + "," + std::to_string(random_payload) + ")";
             //std::cout<<"Tuple string "<<tuple_string<<"\n";
             if(vti!=ending-1){
@@ -257,16 +260,16 @@ void functionLoadBenchmark(ClientContext &context, const FunctionParameters &par
 
 void functionSearchAlex(ClientContext &context, const FunctionParameters &parameters){
     std::cout<<"Within search alex call "<<std::endl;
-    string table_name = parameters.values[0].GetValue<string>();
-    string column_name = parameters.values[1].GetValue<string>();
-    int search_key = parameters.values[2].GetValue<int>();
-    std::cout<<"Searching for "<<search_key<<"\n";
+    // string table_name = parameters.values[0].GetValue<string>();
+    // string column_name = parameters.values[1].GetValue<string>();
+    // int search_key = parameters.values[2].GetValue<int>();
+    // std::cout<<"Searching for "<<search_key<<"\n";
 
-    auto it = index.find(search_key);
-    if (it != index.end()) {
-        int row_id = it.payload();
-        display_row(row_id);
-    }
+    // auto it = index.find(search_key);
+    // if (it != index.end()) {
+    //     int row_id = it.payload();
+    //     display_row(row_id);
+    // }
 }
 
 void functionRunBenchmark(ClientContext &context, const FunctionParameters &parameters){
@@ -413,6 +416,128 @@ void functionRunBenchmark(ClientContext &context, const FunctionParameters &para
 
 }
 
+template <typename K>
+void print_stats(){
+    if(typeid(K)==typeid(DOUBLE_KEY_TYPE)){
+        auto stats = double_alex_index.get_stats();
+        std::cout<<"Stats about the index \n";
+        std::cout<<"Number of keys : "<<stats.num_keys<<"\n";
+        std::cout<<"Number of model nodes : "<<stats.num_model_nodes<<"\n";
+        std::cout<<"Number of data nodes: "<<stats.num_data_nodes<<"\n";
+        std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n"; 
+        std::cout<<"Index size after bulk loading "<<double_alex_index.size()<<"\n";
+        std::cout<<"Index created successfully "<<"\n";
+    }
+    else{
+        auto stats = big_int_alex_index.get_stats();
+        std::cout<<"Stats about the index \n";
+        std::cout<<"Number of keys : "<<stats.num_keys<<"\n";
+        std::cout<<"Number of model nodes : "<<stats.num_model_nodes<<"\n";
+        std::cout<<"Number of data nodes: "<<stats.num_data_nodes<<"\n";
+        std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n"; 
+        std::cout<<"Index size after bulk loading "<<big_int_alex_index.size()<<"\n";
+        std::cout<<"Index created successfully "<<"\n";
+    }
+
+}
+
+template <typename K,typename P>
+void bulkLoadIntoIndex(duckdb::Connection & con,std::string table_name,int column_index){
+    std::cout<<"Soker punda! \n"; 
+}
+
+template<>
+void bulkLoadIntoIndex<double,INDEX_PAYLOAD_TYPE>(duckdb::Connection & con,std::string table_name,int column_index){
+/*
+    Phase 1: Load the data from the table.
+    */
+    string query = "SELECT * FROM "+table_name+";";
+    unique_ptr<MaterializedQueryResult> result = con.Query(query);
+    results = result->getContents();
+    int num_keys = results.size();
+    std::cout<<"Num Keys : "<<num_keys<<"\n";
+
+   /*
+    Phase 2: Bulk load the data from the results vector into the pair array that goes into the index.
+   */
+   std::pair<double,INDEX_PAYLOAD_TYPE>* bulk_load_values = new std::pair<double,INDEX_PAYLOAD_TYPE>[num_keys];
+    std::cout<<"Col index "<<column_index<<"\n";    
+    int max_key = INT_MIN;
+    for (int i=0;i<results.size();i++){
+        int row_id = i;
+        //std::cout<<"before key"<<"\n";
+        auto rrr = results[i][column_index].get();
+        
+        double key_ = dynamic_cast<DoubleData*>(rrr)->value;
+        
+        //std::cout<<"after key"<<"\n";
+        bulk_load_values[i] = {key_,row_id};
+    }
+    /**
+     Phase 3: Sort the bulk load values array based on the key values.
+    */
+
+    std::sort(bulk_load_values,bulk_load_values+num_keys,[](auto const& a, auto const& b) { return a.first < b.first; });
+    
+
+    /*
+    Phase 4: Bulk load the sorted values into the index.
+    */
+    
+    double_alex_index.bulk_load(bulk_load_values, num_keys);
+    std::cout<<"Bulk Loaded! \n";
+    print_stats<DOUBLE_KEY_TYPE>();
+    // }
+    // else{
+    //     big_int_alex_index.bulk_load(bulk_load_values, num_keys);
+    //     std::cout<<"Bulk Loaded! \n";
+    //     print_stats<INT64_KEY_TYPE>();
+    // }
+}
+
+template<>
+void bulkLoadIntoIndex<int64_t,INDEX_PAYLOAD_TYPE>(duckdb::Connection & con,std::string table_name,int column_index){
+/*
+    Phase 1: Load the data from the table.
+    */
+    string query = "SELECT * FROM "+table_name+";";
+    unique_ptr<MaterializedQueryResult> result = con.Query(query);
+    results = result->getContents();
+    int num_keys = results.size();
+    std::cout<<"Num Keys : "<<num_keys<<"\n";
+
+   /*
+    Phase 2: Bulk load the data from the results vector into the pair array that goes into the index.
+   */
+   std::pair<int64_t,INDEX_PAYLOAD_TYPE>* bulk_load_values = new std::pair<int64_t,INDEX_PAYLOAD_TYPE>[num_keys];
+    std::cout<<"Col index "<<column_index<<"\n";    
+    int max_key = INT_MIN;
+    for (int i=0;i<results.size();i++){
+        int row_id = i;
+        //std::cout<<"before key"<<"\n";
+        auto rrr = results[i][column_index].get();
+        
+        int64_t key_ = dynamic_cast<BigIntData*>(rrr)->value;
+        
+        //std::cout<<"after key"<<"\n";
+        bulk_load_values[i] = {key_,row_id};
+    }
+    /**
+     Phase 3: Sort the bulk load values array based on the key values.
+    */
+
+    std::sort(bulk_load_values,bulk_load_values+num_keys,[](auto const& a, auto const& b) { return a.first < b.first; });
+    
+
+    /*
+    Phase 4: Bulk load the sorted values into the index.
+    */
+    
+    big_int_alex_index.bulk_load(bulk_load_values, num_keys);
+    std::cout<<"Bulk Loaded! \n";
+    print_stats<INT64_KEY_TYPE>();
+}
+
 
 void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParameters &parameters){
     string table_name = parameters.values[0].GetValue<string>();
@@ -425,56 +550,45 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     auto &columnList = table.GetColumns();
 
     vector<string>columnNames = columnList.GetColumnNames();
+    vector<LogicalType>columnTypes = columnList.GetColumnTypes();
     int count = 0;
     int column_index = -1;
-    for(auto item:columnNames){
-        std::cout<<"Column name "<<item<<"\n";
-        if(item == column_name){
+    LogicalType column_type;
+    int col_i = 0;
+    for(col_i=0;col_i<columnNames.size();col_i++){
+        string curr_col_name = columnNames[col_i];
+        LogicalType curr_col_type = columnTypes[col_i];
+        std::cout<<"Column name "<<curr_col_name<<"\n";
+        if(curr_col_name == column_name){
             column_index = count;
+            column_type = curr_col_type;
             std::cout<<"Column name found "<<count<<"\n";
         }
         count++;
     }
 
-    string query = "SELECT * FROM "+table_name+";";
-
-    // std::cout<<"Query "<<query<<"\n";
-    // //auto prepare = context.Prepare(query);
-    vector<int>keys;
-    vector<int>payloads;
-    duckdb::Connection con(*context.db);
-    unique_ptr<MaterializedQueryResult> result = con.Query(query);
-    
-    results = result->getContents();
-    int num_keys = results.size();
-    std::cout<<"Num Keys : "<<num_keys<<"\n";
-
-    std::pair<DOUBLE_KEY_TYPE, INDEX_PAYLOAD_TYPE>* bulk_load_values = new std::pair<DOUBLE_KEY_TYPE, INDEX_PAYLOAD_TYPE>[num_keys];
-    std::cout<<"Col index "<<column_index<<"\n";    
-    int max_key = INT_MIN;
-    for (int i=0;i<results.size();i++){
-        int row_id = i;
-        //std::cout<<"before key"<<"\n";
-        auto rrr = results[i][column_index].get();
-    
-        int key_ = (dynamic_cast<DoubleData*>(rrr)->value);
-        //std::cout<<"after key"<<"\n";
-        bulk_load_values[i] = {key_,row_id};
+    if(column_index == -1){
+        std::cout<<"Column not found "<<"\n";
     }
-    std::cout<<"Bulk Loading column data into index "<<"\n";
-    std::sort(bulk_load_values,bulk_load_values+num_keys,[](auto const& a, auto const& b) { return a.first < b.first; });
-    std::cout<<"Index size before bulk loading "<<index.size()<<"\n";
-    
-    index.bulk_load(bulk_load_values, num_keys);
-    auto stats = index.get_stats();
-    std::cout<<"Stats about the index \n";
-    std::cout<<"Number of keys : "<<stats.num_keys<<"\n";
-    std::cout<<"Number of model nodes : "<<stats.num_model_nodes<<"\n";
-    std::cout<<"Number of data nodes: "<<stats.num_data_nodes<<"\n";
-    std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n"; 
-    std::cout<<"Index size after bulk loading "<<index.size()<<"\n";
-    std::cout<<"Index created successfully "<<"\n";
-
+    else{
+        duckdb::Connection con(*context.db);
+        std::cout<<"Column found at index "<<column_index<<"\n";
+        std::cout<<"Creating an alex index for this column"<<"\n";
+        std::cout<<"Column Type "<<typeid(column_type).name()<<"\n";
+        std::cout<<"Column Type "<<typeid(double).name()<<"\n";
+        std::cout<<"Column type to string "<<column_type.ToString()<<"\n";
+        std::string columnTypeName = column_type.ToString();
+        if(columnTypeName == "DOUBLE"){
+            bulkLoadIntoIndex<DOUBLE_KEY_TYPE,INDEX_PAYLOAD_TYPE>(con,table_name,column_index);
+        }
+        else if(columnTypeName == "BIGINT"){
+            bulkLoadIntoIndex<INT64_KEY_TYPE,INDEX_PAYLOAD_TYPE>(con,table_name,column_index);
+        }
+        else{
+            std::cout<<"Unsupported column type for alex indexing (for now) "<<"\n";
+        }
+        //bulkLoadIntoIndex<typeid(column_type).name(),INDEX_PAYLOAD_TYPE>(con,table_name,column_index);
+    }
 }
 
 static void LoadInternal(DatabaseInstance &instance) {
