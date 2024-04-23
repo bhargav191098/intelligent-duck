@@ -13,8 +13,9 @@
 #include "utils.h"
 
 // Modify these if running your own workload
-#define KEY_TYPE long long
+#define KEY_TYPE double
 #define PAYLOAD_TYPE double
+#include<chrono>
 
 /*
  * Required flags:
@@ -67,9 +68,14 @@ int main(int argc, char* argv[]) {
 
   // Create ALEX and bulk load
   alex::Alex<KEY_TYPE, PAYLOAD_TYPE> index;
+  auto start_time = std::chrono::high_resolution_clock::now();
   std::sort(values, values + init_num_keys,
             [](auto const& a, auto const& b) { return a.first < b.first; });
   index.bulk_load(values, init_num_keys);
+  auto end_time = std::chrono::high_resolution_clock::now();
+  
+  std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+    std::cout << "Time taken to bulk load: " << elapsed_seconds.count() << " seconds\n";
 
   // Run workload
   int i = init_num_keys;
