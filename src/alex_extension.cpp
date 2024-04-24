@@ -20,13 +20,13 @@
 #include "ALEX/src/core/alex.h"
 #include "utils.h"
 #include <chrono>
-
+#include <numeric>
 
 #define DOUBLE_KEY_TYPE double
 #define GENERAL_PAYLOAD_TYPE double
 #define KEY_TYPE int
 
-#define INDEX_PAYLOAD_TYPE int
+#define INDEX_PAYLOAD_TYPE double
 
 #define INT64_KEY_TYPE int64_t
 #define PAYLOAD_TYPE double
@@ -141,6 +141,11 @@ void executeQuery(duckdb::Connection& con,string QUERY){
     }
 }
 
+/**
+ * Loading Benchmark into the tables of DuckDB.
+ * 
+*/
+
 template <typename K,typename P>
 void load_benchmark_data_into_table(std::string benchmarkFile,std::string benchmarkFileType,duckdb::Connection& con,std::string tableName,int NUM_KEYS,int num_batches_insert,int per_batch){
     //This function will load a key and payload type agnostic data into the database.
@@ -199,11 +204,11 @@ void load_benchmark_data_into_table(std::string benchmarkFile,std::string benchm
     }
 }
 
-
 void functionLoadBenchmark(ClientContext &context, const FunctionParameters &parameters){
     std::string tableName = parameters.values[0].GetValue<string>();
     std::string benchmarkName = parameters.values[1].GetValue<string>();
     int benchmark_size = parameters.values[2].GetValue<int>();
+    int num_batches_insert = parameters.values[3].GetValue<int>();
 
     std::cout<<"Loading benchmark data - "<<benchmarkName<<"into table "<<tableName<<"\n";
     std::cout<<"The schema of the table will be {key,payload}\n";
@@ -222,7 +227,7 @@ void functionLoadBenchmark(ClientContext &context, const FunctionParameters &par
     */
     std::string CREATE_QUERY = "";
     
-    int num_batches_insert = 10000;
+    //int num_batches_insert = 1000;
     int per_batch = NUM_KEYS/num_batches_insert;
     std::cout<<"Per batch insertion "<<per_batch<<"\n";
     
@@ -273,6 +278,184 @@ void functionSearchAlex(ClientContext &context, const FunctionParameters &parame
     // }
 }
 
+double calculateAverage(const std::vector<double>& v) {
+    return std::accumulate(v.begin(), v.end(), 0.0) / v.size();
+}
+
+/**
+ * 
+ * Function to run one batch of benchmark - Lookup
+*/
+
+/**
+ * 
+ * Correctness verification :)
+*/
+template <typename K>
+void runLookupBenchmarkOneBatchAlex(duckdb::Connection &con){
+    std::cout<<"Hey this is the general template";
+}
+template<>
+void runLookupBenchmarkOneBatchAlex<INT64_KEY_TYPE>(duckdb::Connection& con){
+    std::cout<<"Running benchmark with one batch";
+    /*
+    My rationale here - I will run the benchmark for one batch - read a defined number of keys and count the time needed to do that.
+    */
+
+   // Create a random number generator
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+   vector<double> payloads;
+   vector<INT64_KEY_TYPE>keys;
+   for(int i=0;i<results.size();i++){
+        vector<unique_ptr<Base>>& vec = results.at(i);
+        keys.push_back(dynamic_cast<BigIntData*>(vec[0].get())->value);
+        payloads.push_back(dynamic_cast<DoubleData*>(vec[1].get())->value);
+    }
+    double sum = 0;
+    // for(int i=0;i<payloads.size();i++){
+    //     sum += payloads[i];
+    // }
+    // std::cout<<"Sum of payloads "<<sum<<"\n";
+    // std::cout<<"Average "<<sum/payloads.size()<<"\n";
+
+    std::shuffle(keys.begin(), keys.end(), g);
+    std::cout<<"Keys have been shuffled!\n";
+    auto start = std::chrono::high_resolution_clock::now();
+    for(int i=0;i<keys.size();i++){
+        auto key = keys[i];
+        auto it = big_int_alex_index.find(key);
+        if (it != big_int_alex_index.end()) {
+            double payload = it.payload();
+            sum+=payload;
+        }
+    }
+    std::cout<<"Average : "<<sum/keys.size()<<"\n";
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    std::cout << "Time taken to lookup "<<results.size()<<" keys is "<< elapsed_seconds.count() << " seconds\n";
+    std::cout<<"Checking Correctness: \n";
+    std::string query = "SELECT AVG(payload) FROM longitudes_benchmark;";
+
+    start = std::chrono::high_resolution_clock::now();
+    auto res = con.Query(query);
+    if(!res->HasError()){
+        res->Print();
+    }
+    end = std::chrono::high_resolution_clock::now();
+    elapsed_seconds = end - start;
+    std::cout << "Time taken to avg from DuckDB is "<<results.size()<<" keys is "<< elapsed_seconds.count() << " seconds\n";
+}
+
+template<>
+void runLookupBenchmarkOneBatchAlex<DOUBLE_KEY_TYPE>(duckdb::Connection& con){
+    std::cout<<"Running benchmark with one batch";
+    /*
+    My rationale here - I will run the benchmark for one batch - read a defined number of keys and count the time needed to do that.
+    */
+
+   // Create a random number generator
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+   vector<double> payloads;
+   vector<DOUBLE_KEY_TYPE>keys;
+   for(int i=0;i<results.size();i++){
+        vector<unique_ptr<Base>>& vec = results.at(i);
+        keys.push_back(dynamic_cast<DoubleData*>(vec[0].get())->value);
+        payloads.push_back(dynamic_cast<DoubleData*>(vec[1].get())->value);
+    }
+    double sum = 0;
+    // for(int i=0;i<payloads.size();i++){
+    //     sum += payloads[i];
+    // }
+    // std::cout<<"Sum of payloads "<<sum<<"\n";
+    // std::cout<<"Average "<<sum/payloads.size()<<"\n";
+
+    std::shuffle(keys.begin(), keys.end(), g);
+    std::cout<<"Keys have been shuffled!\n";
+    auto start = std::chrono::high_resolution_clock::now();
+    for(int i=0;i<keys.size();i++){
+        auto key = keys[i];
+        auto it = double_alex_index.find(key);
+        if (it != double_alex_index.end()) {
+            double payload = it.payload();
+            sum+=payload;
+        }
+    }
+    std::cout<<"Average : "<<sum/keys.size()<<"\n";
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    std::cout << "Time taken to lookup "<<results.size()<<" keys is "<< elapsed_seconds.count() << " seconds\n";
+    std::cout<<"Checking Correctness: \n";
+    std::string query = "SELECT AVG(payload) FROM longitudes_benchmark;";
+
+    start = std::chrono::high_resolution_clock::now();
+    auto res = con.Query(query);
+    if(!res->HasError()){
+        res->Print();
+    }
+    end = std::chrono::high_resolution_clock::now();
+    elapsed_seconds = end - start;
+    std::cout << "Time taken to avg from DuckDB is "<<results.size()<<" keys is "<< elapsed_seconds.count() << " seconds\n";
+}
+
+void runLookupBenchmarkOneBatchART(duckdb::Connection& con,std::string benchmark_name){
+    std::cout<<"Running benchmark with one batch";
+    /*
+    My rationale here - I will run the benchmark for one batch - read a defined number of keys and count the time needed to do that.
+    */
+
+   // Create a random number generator
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+   vector<double> payloads;
+   vector<INT64_KEY_TYPE>keys;
+   std::cout<<"benchmark name "<<benchmark_name<<"\n";
+   std::unique_ptr<PreparedStatement> prepare = con.Prepare("SELECT payload FROM "+benchmark_name+" WHERE key = $1");
+   //std::string lookup_query = "SELECT key from "+benchmark_name+" where key = ";
+   vector<int64_t>query_keys;
+   for(int i=0;i<results.size();i++){
+        vector<unique_ptr<Base>>& vec = results.at(i);
+        auto key = dynamic_cast<BigIntData*>(vec[0].get())->value;
+        // std::ostringstream stream;
+        // stream << key;
+        // std::string ressy = stream.str();
+        query_keys.push_back(key);
+    }
+    double sum = 0;
+    // for(int i=0;i<payloads.size();i++){
+    //     sum += payloads[i];
+    // }
+    // std::cout<<"Sum of payloads "<<sum<<"\n";
+    // std::cout<<"Average "<<sum/payloads.size()<<"\n";
+
+
+    //std::shuffle(keys.begin(), keys.end(), g);
+    std::cout<<"Keys have been shuffled!\n";
+    auto start = std::chrono::high_resolution_clock::now();
+    for(int i=0;i<query_keys.size();i++){
+        //std::string query = queries[i];
+        std::unique_ptr<QueryResult> res = prepare->Execute(query_keys[i]);
+        
+        if(res->HasError()){
+            std::cout<<"Error in query "<<"\n";
+        }
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    std::cout << "Time taken to lookup "<<results.size()<<" keys is "<< elapsed_seconds.count() << " seconds\n";
+    
+}
+
+
+
+/*
+Run the Benchmarks on different indexes.
+*/
+
 template <typename K>
 void runLookupBenchmarkAlex(K *keys);
 
@@ -297,7 +480,7 @@ void runLookupBenchmarkAlex(double *keys){
     int num_lookups_per_batch = batch_size - num_inserts_per_batch;
     double cumulative_insert_time = 0;
     double cumulative_lookup_time = 0;
-    double time_limit = 0.5;
+    double time_limit = 0.1;
     bool print_batch_stats = true;
     
 
@@ -328,8 +511,13 @@ void runLookupBenchmarkAlex(double *keys){
         for (int j = 0; j < num_lookups_per_batch; j++) {
             double key = lookup_keys[j];
             INDEX_PAYLOAD_TYPE* payload = double_alex_index.get_payload(key);
+            // std::cout<<"Key "<<key<<" Payload "<<*payload<<"\n";
             if (payload) {
-            sum += *payload;
+                std::cout<<"Payload is there! "<<"\n";
+                sum += *payload;
+            }
+            else{
+                std::cout<<"Payload is not here!! "<<"\n";
             }
         }
         auto lookups_end_time = std::chrono::high_resolution_clock::now();
@@ -379,6 +567,8 @@ void runLookupBenchmarkAlex(double *keys){
     delete[] keys;
 }
 
+
+
 template <>
 void runLookupBenchmarkAlex(INT64_KEY_TYPE *keys){
 
@@ -389,23 +579,24 @@ void runLookupBenchmarkAlex(INT64_KEY_TYPE *keys){
     }
 
     std::cout<<"Running benchmark workload "<<"\n";
+
     int init_num_keys = load_end_point;
-    int total_num_keys = 40000;
-    int batch_size = 10000;
+    int total_num_keys = 400000;
+    int batch_size = 100000;
     double insert_frac = 0.5;
     string lookup_distribution = "zipf";
     int i = init_num_keys;
     long long cumulative_inserts = 0;
     long long cumulative_lookups = 0;
-    int num_inserts_per_batch = static_cast<int>(batch_size * insert_frac);
-    int num_lookups_per_batch = batch_size - num_inserts_per_batch;
-    double cumulative_insert_time = 0;
+    int num_lookups_per_batch = batch_size;
     double cumulative_lookup_time = 0;
-    double time_limit = 0.5;
+    double time_limit = 0.1;
     bool print_batch_stats = true;
+    double elapsed_time_seconds = 0;
+
+    std::cout<<"Num lookups per batch "<<num_lookups_per_batch<<"\n";
+
     
-
-
     auto workload_start_time = std::chrono::high_resolution_clock::now();
     int batch_no = 0;
     INDEX_PAYLOAD_TYPE sum = 0;
@@ -432,11 +623,20 @@ void runLookupBenchmarkAlex(INT64_KEY_TYPE *keys){
         for (int j = 0; j < num_lookups_per_batch; j++) {
             int64_t key = lookup_keys[j];
             INDEX_PAYLOAD_TYPE* payload = big_int_alex_index.get_payload(key);
+            //std::cout<<"Key "<<key<<" Payload "<<*payload<<"\n";
             if (payload) {
-            sum += *payload;
+                //std::cout<<"Payload is there! "<<"\n";
+                sum += *payload;
+            }
+            else{
+                std::cout<<"Payload is not here!! "<<"\n";
             }
         }
         auto lookups_end_time = std::chrono::high_resolution_clock::now();
+
+        auto elapsed_seconds = lookups_end_time - lookups_start_time;
+        elapsed_time_seconds = elapsed_seconds.count();
+
         batch_lookup_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
                                 lookups_end_time - lookups_start_time)
                                 .count();
@@ -449,36 +649,43 @@ void runLookupBenchmarkAlex(INT64_KEY_TYPE *keys){
                 std::chrono::high_resolution_clock::now() - workload_start_time)
                 .count();
         if (workload_elapsed_time > time_limit * 1e9 * 60) {
-        break;
+            break;
         }
         if (print_batch_stats) {
-        int num_batch_operations = num_lookups_per_batch;
-        double batch_time = batch_lookup_time;
-        long long cumulative_operations = cumulative_lookups;
-        double cumulative_time = cumulative_lookup_time;
-        std::cout << "Batch " << batch_no
-                    << ", cumulative ops: " << cumulative_operations
-                    << "\n\tbatch throughput:\t"
-                    << num_lookups_per_batch / batch_lookup_time * 1e9
-                    << " lookups/sec,\t"
-                    << cumulative_lookups / cumulative_lookup_time * 1e9
-                    << " lookups/sec,\t"
-                    << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
-                    << std::endl;
-        }
+            int num_batch_operations = num_lookups_per_batch;
+            double batch_time = batch_lookup_time;
+            long long cumulative_operations = cumulative_lookups;
+            double cumulative_time = cumulative_lookup_time;
+            std::cout << "Batch " << batch_no
+                        <<"Batch lookup time "<<elapsed_time_seconds<<"\n"
+                        << ", cumulative ops: " << cumulative_operations
+                        << "\n\tbatch throughput:\t"
+                        << num_lookups_per_batch / batch_lookup_time * 1e9
+                        << " lookups/sec,\t"
+                        << cumulative_lookups / cumulative_lookup_time * 1e9
+                        << " lookups/sec,\t"
+                        << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
+                        << std::endl;
+            }
     }
-    long long cumulative_operations = cumulative_lookups + cumulative_inserts;
-    double cumulative_time = cumulative_lookup_time + cumulative_insert_time;
-    std::cout << "Cumulative stats: " << batch_no << " batches, "
-                << cumulative_operations << " ops (" << cumulative_lookups
-                << " lookups, " << cumulative_inserts << " inserts)"
-                << "\n\tcumulative throughput:\t"
-                << cumulative_lookups / cumulative_lookup_time * 1e9
-                << " lookups/sec,\t"
-                << cumulative_inserts / cumulative_insert_time * 1e9
-                << " inserts/sec,\t"
-                << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
-                << std::endl;
+    // long long avg_lookup_time_per_batch = cumulative_lookups/batch_no;
+    // std::cout<<"Average number of lookups per batch "<<avg_lookup_operations_per_batch<<"\n";
+    long long cummulative_time = cumulative_lookup_time;
+    std::cout<<"Cumulative time "<<cummulative_time<<"\n";
+    std::cout<<"Cumulative lookups "<<cumulative_lookups<<"\n";
+    std::cout<<"Throughput : "<< cumulative_lookups / cumulative_lookup_time * 1e9<<"ops/sec\n";
+    // long long cumulative_operations = cumulative_lookups + cumulative_inserts;
+    // double cumulative_time = cumulative_lookup_time + cumulative_insert_time;
+    // std::cout << "Cumulative stats: " << batch_no << " batches, "
+    //             << cumulative_operations << " ops (" << cumulative_lookups
+    //             << " lookups, " << cumulative_inserts << " inserts)"
+    //             << "\n\tcumulative throughput:\t"
+    //             << cumulative_lookups / cumulative_lookup_time * 1e9
+    //             << " lookups/sec,\t"
+    //             << cumulative_inserts / cumulative_insert_time * 1e9
+    //             << " inserts/sec,\t"
+    //             << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
+    //             << std::endl;
 
     delete[] keys;
 }
@@ -491,8 +698,8 @@ void runLookupBenchmarkArt(K *keys,duckdb::Connection &con,std::string benchmark
 
     std::cout<<"Running benchmark workload "<<"\n";
     int init_num_keys = load_end_point;
-    int total_num_keys = 40000;
-    int batch_size = 10000;
+    int total_num_keys = 4000000;
+    int batch_size = 100000;
     double insert_frac = 0.5;
     string lookup_distribution = "zipf";
     int i = init_num_keys;
@@ -513,6 +720,7 @@ void runLookupBenchmarkArt(K *keys,duckdb::Connection &con,std::string benchmark
     int batch_no = 0;
     std::cout << std::scientific;
     std::cout << std::setprecision(3);
+    std::unique_ptr<PreparedStatement> prepare = con.Prepare("SELECT payload FROM "+benchmark_name+"_benchmark WHERE key = $1");
 
     while (true) {
         batch_no++;
@@ -520,6 +728,7 @@ void runLookupBenchmarkArt(K *keys,duckdb::Connection &con,std::string benchmark
         // Do lookups
         double batch_lookup_time = 0.0;
         if (i > 0) {
+
         K* lookup_keys = nullptr;
         if (lookup_distribution == "uniform") {
             lookup_keys = get_search_keys(keys, i, num_lookups_per_batch);
@@ -530,24 +739,28 @@ void runLookupBenchmarkArt(K *keys,duckdb::Connection &con,std::string benchmark
                     << std::endl;
             //return 1;
         }
-        auto lookups_start_time = std::chrono::high_resolution_clock::now();
+        vector<K>query_vector;
+
         for (int j = 0; j < num_lookups_per_batch; j++) {
             K key = lookup_keys[j];
 
-            std::ostringstream stream;
-            if(typeid(K)==typeid(DOUBLE_KEY_TYPE)){
-                stream << std::setprecision(std::numeric_limits<K>::max_digits10) << key;
-            }
-            else{
-                stream << key;
-            }
-            std::string ressy = stream.str();
-            std::string query = lookup_query + ressy + ";";
-            auto result = con.Query(query);
-            lookup_count+=1;
-            
-            //INDEX_PAYLOAD_TYPE* payload = index.get_payload(key);
-            
+            // std::ostringstream stream;
+            // if(typeid(K)==typeid(DOUBLE_KEY_TYPE)){
+            //     stream << std::setprecision(std::numeric_limits<K>::max_digits10) << key;
+            // }
+            // else{
+            //     stream << key;
+            // }
+            // std::string ressy = stream.str();
+            // std::string query = lookup_query + ressy + ";";
+            query_vector.push_back(key);
+        }
+
+        auto lookups_start_time = std::chrono::high_resolution_clock::now();
+        for (int j = 0; j < num_lookups_per_batch; j++) {
+            K query = query_vector[j];
+            auto result = prepare->Execute(query);
+            lookup_count+=1;    
             if(!result->HasError()){
                 sum+=1;
             }
@@ -587,19 +800,12 @@ void runLookupBenchmarkArt(K *keys,duckdb::Connection &con,std::string benchmark
                     << std::endl;
         }
     }
-    long long cumulative_operations = cumulative_lookups + cumulative_inserts;
-    double cumulative_time = cumulative_lookup_time + cumulative_insert_time;
-    std::cout << "Cumulative stats: " << batch_no << " batches, "
-                << cumulative_operations << " ops (" << cumulative_lookups
-                << " lookups, " << cumulative_inserts << " inserts)"
-                << "\n\tcumulative throughput:\t"
-                << cumulative_lookups / cumulative_lookup_time * 1e9
-                << " lookups/sec,\t"
-                << cumulative_inserts / cumulative_insert_time * 1e9
-                << " inserts/sec,\t"
-                << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
-                << std::endl;
 
+    long long cummulative_time = cumulative_lookup_time;
+    std::cout<<"Cumulative time "<<cummulative_time<<"\n";
+    std::cout<<"Cumulative lookups "<<cumulative_lookups<<"\n";
+    std::cout<<"Throughput : "<< cumulative_lookups / cumulative_lookup_time * 1e9<<"ops/sec\n";
+    
     delete[] keys;
 
     if(lookup_count == sum){
@@ -666,154 +872,154 @@ void functionRunLookupBenchmark(ClientContext &context, const FunctionParameters
 
 }
 
-void functionRunBenchmark(ClientContext &context, const FunctionParameters &parameters){
+// void functionRunBenchmark(ClientContext &context, const FunctionParameters &parameters){
 
-    /**
-     * 
-     * Loading the rest of keys from the binary file.
-    */
+//     /**
+//      * 
+//      * Loading the rest of keys from the binary file.
+//     */
 
-    std::string keys_file_path = "/Users/bhargavkrish/Desktop/USC/Duck_Extension/trial-3/intelligent-duck/src/longitudes-200M.bin.data";
-    auto keys = new DOUBLE_KEY_TYPE[load_end_point];
-    std::string keys_file_type = "binary";
-    if (keys_file_type == "binary") {
-        std::cout<<"Loading binary data "<<std::endl;
-        load_binary_data(keys, load_end_point, keys_file_path);
-    } else if (keys_file_type == "text") {
-        load_text_data(keys, load_end_point, keys_file_path);
-    } else {
-        std::cerr << "--keys_file_type must be either 'binary' or 'text'"
-                << std::endl;
-        //return 1;
-    }
+//     std::string keys_file_path = "/Users/bhargavkrish/Desktop/USC/Duck_Extension/trial-3/intelligent-duck/src/longitudes-200M.bin.data";
+//     auto keys = new DOUBLE_KEY_TYPE[load_end_point];
+//     std::string keys_file_type = "binary";
+//     if (keys_file_type == "binary") {
+//         std::cout<<"Loading binary data "<<std::endl;
+//         load_binary_data(keys, load_end_point, keys_file_path);
+//     } else if (keys_file_type == "text") {
+//         load_text_data(keys, load_end_point, keys_file_path);
+//     } else {
+//         std::cerr << "--keys_file_type must be either 'binary' or 'text'"
+//                 << std::endl;
+//         //return 1;
+//     }
 
 
-    std::cout<<"Running benchmark workload "<<"\n";
-    std::string benchmarkName = parameters.values[0].GetValue<string>();
-    int init_num_keys = load_end_point;
-    int total_num_keys = 4000000;
-    int batch_size = 10000;
-    double insert_frac = 0.5;
-    string lookup_distribution = "zipf";
-    int i = init_num_keys;
-    long long cumulative_inserts = 0;
-    long long cumulative_lookups = 0;
-    int num_inserts_per_batch = static_cast<int>(batch_size * insert_frac);
-    int num_lookups_per_batch = batch_size - num_inserts_per_batch;
-    double cumulative_insert_time = 0;
-    double cumulative_lookup_time = 0;
-    double time_limit = 0.5;
-    bool print_batch_stats = true;
+//     std::cout<<"Running benchmark workload "<<"\n";
+//     std::string benchmarkName = parameters.values[0].GetValue<string>();
+//     int init_num_keys = load_end_point;
+//     int total_num_keys = 4000000;
+//     int batch_size = 10000;
+//     double insert_frac = 0.5;
+//     string lookup_distribution = "zipf";
+//     int i = init_num_keys;
+//     long long cumulative_inserts = 0;
+//     long long cumulative_lookups = 0;
+//     int num_inserts_per_batch = static_cast<int>(batch_size * insert_frac);
+//     int num_lookups_per_batch = batch_size - num_inserts_per_batch;
+//     double cumulative_insert_time = 0;
+//     double cumulative_lookup_time = 0;
+//     double time_limit = 0.5;
+//     bool print_batch_stats = true;
     
 
 
-    auto workload_start_time = std::chrono::high_resolution_clock::now();
-    int batch_no = 0;
-    PAYLOAD_TYPE sum = 0;
-    std::cout << std::scientific;
-    std::cout << std::setprecision(3);
-    while (true) {
-        batch_no++;
+//     auto workload_start_time = std::chrono::high_resolution_clock::now();
+//     int batch_no = 0;
+//     PAYLOAD_TYPE sum = 0;
+//     std::cout << std::scientific;
+//     std::cout << std::setprecision(3);
+//     while (true) {
+//         batch_no++;
 
-        // Do lookups
-        double batch_lookup_time = 0.0;
-        if (i > 0) {
-        DOUBLE_KEY_TYPE* lookup_keys = nullptr;
-        if (lookup_distribution == "uniform") {
-            lookup_keys = get_search_keys(keys, i, num_lookups_per_batch);
-        } else if (lookup_distribution == "zipf") {
-            lookup_keys = get_search_keys_zipf(keys, i, num_lookups_per_batch);
-        } else {
-            std::cerr << "--lookup_distribution must be either 'uniform' or 'zipf'"
-                    << std::endl;
-            //return 1;
-        }
-        auto lookups_start_time = std::chrono::high_resolution_clock::now();
-        for (int j = 0; j < num_lookups_per_batch; j++) {
-            DOUBLE_KEY_TYPE key = lookup_keys[j];
-            INDEX_PAYLOAD_TYPE* payload = index.get_payload(key);
-            if (payload) {
-            sum += *payload;
-            }
-        }
-        auto lookups_end_time = std::chrono::high_resolution_clock::now();
-        batch_lookup_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                lookups_end_time - lookups_start_time)
-                                .count();
-        cumulative_lookup_time += batch_lookup_time;
-        cumulative_lookups += num_lookups_per_batch;
-        delete[] lookup_keys;
-        }
+//         // Do lookups
+//         double batch_lookup_time = 0.0;
+//         if (i > 0) {
+//         DOUBLE_KEY_TYPE* lookup_keys = nullptr;
+//         if (lookup_distribution == "uniform") {
+//             lookup_keys = get_search_keys(keys, i, num_lookups_per_batch);
+//         } else if (lookup_distribution == "zipf") {
+//             lookup_keys = get_search_keys_zipf(keys, i, num_lookups_per_batch);
+//         } else {
+//             std::cerr << "--lookup_distribution must be either 'uniform' or 'zipf'"
+//                     << std::endl;
+//             //return 1;
+//         }
+//         auto lookups_start_time = std::chrono::high_resolution_clock::now();
+//         for (int j = 0; j < num_lookups_per_batch; j++) {
+//             DOUBLE_KEY_TYPE key = lookup_keys[j];
+//             INDEX_PAYLOAD_TYPE* payload = index.get_payload(key);
+//             if (payload) {
+//             sum += *payload;
+//             }
+//         }
+//         auto lookups_end_time = std::chrono::high_resolution_clock::now();
+//         batch_lookup_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+//                                 lookups_end_time - lookups_start_time)
+//                                 .count();
+//         cumulative_lookup_time += batch_lookup_time;
+//         cumulative_lookups += num_lookups_per_batch;
+//         delete[] lookup_keys;
+//         }
 
-        // Do inserts
-        int num_actual_inserts =
-            std::min(num_inserts_per_batch, total_num_keys - i);
-        int num_keys_after_batch = i + num_actual_inserts;
-        auto inserts_start_time = std::chrono::high_resolution_clock::now();
-        for (; i < num_keys_after_batch; i++) {
-        index.insert({keys[i], i});
-        }
-        auto inserts_end_time = std::chrono::high_resolution_clock::now();
-        double batch_insert_time =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(inserts_end_time -
-                                                                inserts_start_time)
-                .count();
-        cumulative_insert_time += batch_insert_time;
-        cumulative_inserts += num_actual_inserts;
+//         // Do inserts
+//         int num_actual_inserts =
+//             std::min(num_inserts_per_batch, total_num_keys - i);
+//         int num_keys_after_batch = i + num_actual_inserts;
+//         auto inserts_start_time = std::chrono::high_resolution_clock::now();
+//         for (; i < num_keys_after_batch; i++) {
+//         index.insert({keys[i], i});
+//         }
+//         auto inserts_end_time = std::chrono::high_resolution_clock::now();
+//         double batch_insert_time =
+//             std::chrono::duration_cast<std::chrono::nanoseconds>(inserts_end_time -
+//                                                                 inserts_start_time)
+//                 .count();
+//         cumulative_insert_time += batch_insert_time;
+//         cumulative_inserts += num_actual_inserts;
 
-        if (print_batch_stats) {
-        int num_batch_operations = num_lookups_per_batch + num_actual_inserts;
-        double batch_time = batch_lookup_time + batch_insert_time;
-        long long cumulative_operations = cumulative_lookups + cumulative_inserts;
-        double cumulative_time = cumulative_lookup_time + cumulative_insert_time;
-        std::cout << "Batch " << batch_no
-                    << ", cumulative ops: " << cumulative_operations
-                    << "\n\tbatch throughput:\t"
-                    << num_lookups_per_batch / batch_lookup_time * 1e9
-                    << " lookups/sec,\t"
-                    << num_actual_inserts / batch_insert_time * 1e9
-                    << " inserts/sec,\t" << num_batch_operations / batch_time * 1e9
-                    << " ops/sec"
-                    << "\n\tcumulative throughput:\t"
-                    << cumulative_lookups / cumulative_lookup_time * 1e9
-                    << " lookups/sec,\t"
-                    << cumulative_inserts / cumulative_insert_time * 1e9
-                    << " inserts/sec,\t"
-                    << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
-                    << std::endl;
-        }
+//         if (print_batch_stats) {
+//         int num_batch_operations = num_lookups_per_batch + num_actual_inserts;
+//         double batch_time = batch_lookup_time + batch_insert_time;
+//         long long cumulative_operations = cumulative_lookups + cumulative_inserts;
+//         double cumulative_time = cumulative_lookup_time + cumulative_insert_time;
+//         std::cout << "Batch " << batch_no
+//                     << ", cumulative ops: " << cumulative_operations
+//                     << "\n\tbatch throughput:\t"
+//                     << num_lookups_per_batch / batch_lookup_time * 1e9
+//                     << " lookups/sec,\t"
+//                     << num_actual_inserts / batch_insert_time * 1e9
+//                     << " inserts/sec,\t" << num_batch_operations / batch_time * 1e9
+//                     << " ops/sec"
+//                     << "\n\tcumulative throughput:\t"
+//                     << cumulative_lookups / cumulative_lookup_time * 1e9
+//                     << " lookups/sec,\t"
+//                     << cumulative_inserts / cumulative_insert_time * 1e9
+//                     << " inserts/sec,\t"
+//                     << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
+//                     << std::endl;
+//         }
 
-        // Check for workload end conditions
-        if (num_actual_inserts < num_inserts_per_batch) {
-        // End if we have inserted all keys in a workload with inserts
-        break;
-        }
-        double workload_elapsed_time =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(
-                std::chrono::high_resolution_clock::now() - workload_start_time)
-                .count();
-        if (workload_elapsed_time > time_limit * 1e9 * 60) {
-        break;
-        }
-    }
+//         // Check for workload end conditions
+//         if (num_actual_inserts < num_inserts_per_batch) {
+//         // End if we have inserted all keys in a workload with inserts
+//         break;
+//         }
+//         double workload_elapsed_time =
+//             std::chrono::duration_cast<std::chrono::nanoseconds>(
+//                 std::chrono::high_resolution_clock::now() - workload_start_time)
+//                 .count();
+//         if (workload_elapsed_time > time_limit * 1e9 * 60) {
+//         break;
+//         }
+//     }
 
-    long long cumulative_operations = cumulative_lookups + cumulative_inserts;
-    double cumulative_time = cumulative_lookup_time + cumulative_insert_time;
-    std::cout << "Cumulative stats: " << batch_no << " batches, "
-                << cumulative_operations << " ops (" << cumulative_lookups
-                << " lookups, " << cumulative_inserts << " inserts)"
-                << "\n\tcumulative throughput:\t"
-                << cumulative_lookups / cumulative_lookup_time * 1e9
-                << " lookups/sec,\t"
-                << cumulative_inserts / cumulative_insert_time * 1e9
-                << " inserts/sec,\t"
-                << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
-                << std::endl;
+//     long long cumulative_operations = cumulative_lookups + cumulative_inserts;
+//     double cumulative_time = cumulative_lookup_time + cumulative_insert_time;
+//     std::cout << "Cumulative stats: " << batch_no << " batches, "
+//                 << cumulative_operations << " ops (" << cumulative_lookups
+//                 << " lookups, " << cumulative_inserts << " inserts)"
+//                 << "\n\tcumulative throughput:\t"
+//                 << cumulative_lookups / cumulative_lookup_time * 1e9
+//                 << " lookups/sec,\t"
+//                 << cumulative_inserts / cumulative_insert_time * 1e9
+//                 << " inserts/sec,\t"
+//                 << cumulative_operations / cumulative_time * 1e9 << " ops/sec"
+//                 << std::endl;
 
-    delete[] keys;
-    //delete[] values;
+//     delete[] keys;
+//     //delete[] values;
 
-}
+// }
 
 template <typename K>
 void print_stats(){
@@ -839,6 +1045,10 @@ void print_stats(){
     }
 
 }
+
+/*
+Bulk Load into Index functions
+*/
 
 template <typename K,typename P>
 void bulkLoadIntoIndex(duckdb::Connection & con,std::string table_name,int column_index){
@@ -868,9 +1078,10 @@ void bulkLoadIntoIndex<double,INDEX_PAYLOAD_TYPE>(duckdb::Connection & con,std::
         auto rrr = results[i][column_index].get();
         
         double key_ = dynamic_cast<DoubleData*>(rrr)->value;
+        double value_ = dynamic_cast<DoubleData*>(results[i][column_index+1].get())->value;
         
         //std::cout<<"after key"<<"\n";
-        bulk_load_values[i] = {key_,row_id};
+        bulk_load_values[i] = {key_,value_};
     }
     /**
      Phase 3: Sort the bulk load values array based on the key values.
@@ -914,9 +1125,10 @@ void bulkLoadIntoIndex<int64_t,INDEX_PAYLOAD_TYPE>(duckdb::Connection & con,std:
         auto rrr = results[i][column_index].get();
         
         int64_t key_ = dynamic_cast<BigIntData*>(rrr)->value;
+        double value_ = dynamic_cast<DoubleData*>(results[i][column_index+1].get())->value;
         
         //std::cout<<"after key"<<"\n";
-        bulk_load_values[i] = {key_,row_id};
+        bulk_load_values[i] = {key_,value_};
     }
     /**
      Phase 3: Sort the bulk load values array based on the key values.
@@ -937,6 +1149,11 @@ void bulkLoadIntoIndex<int64_t,INDEX_PAYLOAD_TYPE>(duckdb::Connection & con,std:
     std::cout<<"Bulk Loaded! \n";
     print_stats<INT64_KEY_TYPE>();
 }
+
+/**
+ * Index Creation
+ * 
+*/
 
 void functionCreateARTIndex(ClientContext &context, const FunctionParameters &parameters){
 
@@ -973,11 +1190,8 @@ void functionCreateARTIndex(ClientContext &context, const FunctionParameters &pa
         else{
             std::cout<<"Column name not found "<<"\n";
         }
-
     }
-
 }
-
 
 void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParameters &parameters){
     string table_name = parameters.values[0].GetValue<string>();
@@ -988,6 +1202,7 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     CheckIfTableExists(context, qname);
     auto &table = Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name);
     auto &columnList = table.GetColumns();
+    
 
     vector<string>columnNames = columnList.GetColumnNames();
     vector<LogicalType>columnTypes = columnList.GetColumnTypes();
@@ -1031,6 +1246,56 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     }
 }
 
+
+void functionInsertIntoTable(ClientContext &context, const FunctionParameters &parameters){
+    std::string table_name = parameters.values[0].GetValue<string>();
+    std::string column_name = parameters.values[1].GetValue<string>();
+    double key = parameters.values[2].GetValue<double>();
+    double value = parameters.values[3].GetValue<double>();
+    duckdb::Connection con(*context.db);
+    std::string query = "INSERT INTO "+table_name+" VALUES(";
+    query+=std::to_string(key)+","+std::to_string(value)+");";
+    auto result = con.Query(query);
+    if(!result->HasError()){
+        std::cout<<"Insertion successful "<<"\n";
+        if(double_alex_index.size()>0){
+            double_alex_index.insert({key,value});
+        }
+        else{
+            std::cout<<"Index is empty. So not updating it."<<"\n";
+        }
+    }
+    else{
+        std::cout<<"Insertion failed "<<"\n";
+    }
+    //For double index:
+}
+
+void functionRunBenchmarkOneBatch(ClientContext &context, const FunctionParameters &parameters){
+    std::string benchmark_name = parameters.values[0].GetValue<string>();
+    std::string index = parameters.values[1].GetValue<string>();
+    std::string table_name = benchmark_name+"_benchmark";
+    std::string data_type = parameters.values[2].GetValue<string>();
+    duckdb::Connection con(*context.db);
+    if(index == "alex"){
+        if(data_type == "double"){
+            runLookupBenchmarkOneBatchAlex<double>(con);
+        }
+        else{
+            runLookupBenchmarkOneBatchAlex<int64_t>(con);
+        }
+    }
+    else{
+        runLookupBenchmarkOneBatchART(con,benchmark_name);
+    }
+
+}
+
+/**
+ * Load Functions: 
+ * 
+*/
+
 static void LoadInternal(DatabaseInstance &instance) {
     // Register a scalar function
     auto alex_scalar_function = ScalarFunction("alex", {LogicalType::VARCHAR}, LogicalType::VARCHAR, AlexScalarFun);
@@ -1048,7 +1313,7 @@ static void LoadInternal(DatabaseInstance &instance) {
     ExtensionUtil::RegisterFunction(instance, searchAlexDummy);
 
     // The arguments for the load benchmark data function are the table name, benchmark name and the number of elements to bulk load.
-    auto loadBenchmarkData = PragmaFunction::PragmaCall("load_benchmark",functionLoadBenchmark,{LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::INTEGER},{});
+    auto loadBenchmarkData = PragmaFunction::PragmaCall("load_benchmark",functionLoadBenchmark,{LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::INTEGER,LogicalType::INTEGER},{});
     ExtensionUtil::RegisterFunction(instance,loadBenchmarkData);
 
     auto runBenchmarkWorkload = PragmaFunction::PragmaCall("run_lookup_benchmark",functionRunLookupBenchmark,{LogicalType::VARCHAR,LogicalType::VARCHAR},{});
@@ -1056,6 +1321,13 @@ static void LoadInternal(DatabaseInstance &instance) {
 
     auto create_art_index_function = PragmaFunction::PragmaCall("create_art_index",functionCreateARTIndex,{LogicalType::VARCHAR,LogicalType::VARCHAR},LogicalType::INVALID); 
     ExtensionUtil::RegisterFunction(instance,create_art_index_function);
+    
+    auto insert_into_table_function = PragmaFunction::PragmaCall("insert_into_table",functionInsertIntoTable,{LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::DOUBLE,LogicalType::DOUBLE},{});
+    ExtensionUtil::RegisterFunction(instance,insert_into_table_function);
+
+    //Benchmark name,index.
+    auto runBenchmarkOneBatch = PragmaFunction::PragmaCall("run_benchmark_one_batch",functionRunBenchmarkOneBatch,{LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::VARCHAR},{});
+    ExtensionUtil::RegisterFunction(instance,runBenchmarkOneBatch);
 }
 
 void AlexExtension::Load(DuckDB &db) {
