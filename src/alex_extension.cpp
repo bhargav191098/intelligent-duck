@@ -93,35 +93,7 @@ int load_end_point = 0;
 std::vector<vector<unique_ptr<Base> > > results;
 
 
-void functionTryAlex(){
-    // std::cout<<"Simply trying out alex "<<"\n";
-    // const int num_keys = 100;
-    // std::pair<KEY_TYPE, PAYLOAD_TYPE> values[num_keys];
-    // std::mt19937_64 gen(std::random_device{}());
-    // std::uniform_real_distribution<PAYLOAD_TYPE> dis;
-    // vector<int>arr1,arr2;
-    // for (int i = 0; i < num_keys; i++) {
-    //     values[i].first = i;
-    //     values[i].second = dis(gen);
-    //     arr1.push_back(values[i].first);
-    //     arr2.push_back(values[i].second);
-    // }
-    
-    // //Bulk load the keys [0, 100)
-    // index.bulk_load(values, num_keys);
-
-    // // Insert the keys [100, 200). Now there are 200 keys.
-    // for (int i = num_keys; i < 2 * num_keys; i++) {
-    //     KEY_TYPE new_key = i;
-    //     PAYLOAD_TYPE new_payload = dis(gen);
-    //     index.insert(new_key, new_payload);
-    // }
-
-    // // Erase the keys [0, 10). Now there are 190 keys.
-    // for (int i = 0; i < 10; i++) {
-    //     index.erase(i);
-    // }
-}
+void functionTryAlex(){}
 
 void display_row(int row_id){
     vector<unique_ptr<Base>>& vec = results.at(row_id);
@@ -274,16 +246,6 @@ void functionLoadBenchmark(ClientContext &context, const FunctionParameters &par
 
 void functionSearchAlex(ClientContext &context, const FunctionParameters &parameters){
     std::cout<<"Within search alex call "<<std::endl;
-    // string table_name = parameters.values[0].GetValue<string>();
-    // string column_name = parameters.values[1].GetValue<string>();
-    // int search_key = parameters.values[2].GetValue<int>();
-    // std::cout<<"Searching for "<<search_key<<"\n";
-
-    // auto it = index.find(search_key);
-    // if (it != index.end()) {
-    //     int row_id = it.payload();
-    //     display_row(row_id);
-    // }
 }
 
 double calculateAverage(const std::vector<double>& v) {
@@ -1182,11 +1144,11 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
     string column_name = parameters.values[1].GetValue<string>();
 
 
+
     QualifiedName qname = GetQualifiedName(context, table_name);
     CheckIfTableExists(context, qname);
     auto &table = Catalog::GetEntry<TableCatalogEntry>(context, qname.catalog, qname.schema, qname.name);
-    auto &columnList = table.GetColumns();
-    
+    auto &columnList = table.GetColumns(); 
 
     vector<string>columnNames = columnList.GetColumnNames();
     vector<LogicalType>columnTypes = columnList.GetColumnTypes();
@@ -1685,9 +1647,7 @@ static void LoadInternal(DatabaseInstance &instance) {
 
     auto runInsertionBenchmark = PragmaFunction::PragmaCall("run_insertion_benchmark",functionRunInsertionBenchmark,{LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::VARCHAR, LogicalType::INTEGER},{});
     ExtensionUtil::RegisterFunction(instance,runInsertionBenchmark);
-    // auto searchUsingAlexIndexB = PragmaFunction::PragmaCall("alex_findb",functionAlexFind,{LogicalType::VARCHAR,LogicalType::BIGINT},{});
-    // ExtensionUtil::RegisterFunction(instance,searchUsingAlexIndexB);
-
+   
 
 }
 
