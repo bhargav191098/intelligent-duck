@@ -1240,6 +1240,46 @@ void functionAlexFind(ClientContext &context, const FunctionParameters &paramete
     }
 }
 
+void functionAlexSize(ClientContext &context, const FunctionParameters &parameters){
+    std::string index_type = parameters.values[0].GetValue<string>();
+    long long total_size = 0;
+    long long model_size = 0;
+    long long data_size = 0;
+    if(index_type == "double"){
+        model_size = double_alex_index.model_size();
+        data_size = double_alex_index.data_size();
+        //std::cout<<"Model size "<<model_size<<"\n";
+        //std::cout<<"Data size "<<data_size<<"\n";
+        total_size = model_size + data_size;
+
+    }
+    else{
+        model_size = big_int_alex_index.model_size();
+        data_size = big_int_alex_index.data_size();
+        //std::cout<<"Model size "<<model_size<<"\n";
+        //std::cout<<"Data size "<<data_size<<"\n";
+        total_size = model_size + data_size;
+
+    }
+    //return static_cast<LogicalType::BIGINT>(total_size);
+    double model_size_in_mb = static_cast<double>(model_size) / (1024 * 1024);
+    double data_size_in_mb = static_cast<double>(data_size) / (1024 * 1024);
+    std::cout<<"Model size "<<model_size_in_mb<<" MB\n";
+    std::cout<<"Data size "<<data_size_in_mb<<" MB\n";
+    double total_size_in_mb = static_cast<double>(total_size) / (1024 * 1024);
+    std::cout<<"Size of the Indexing structure "<<total_size_in_mb<<" MB\n";
+}
+
+void functionAuxStorage(ClientContext &context, const FunctionParameters &parameters){
+    std::string index_type = parameters.values[0].GetValue<string>();
+    long long total_size = 0;
+    for(const auto& inner_vector:results){
+        total_size+=inner_vector.size()*sizeof(inner_vector[0]);
+    }
+    double total_size_in_mb = static_cast<double>(total_size) / (1024 * 1024);
+    std::cout<<"Auxillary storage size "<<total_size_in_mb<<" MB\n";
+}
+
 
 /**
  * Load Functions: 
@@ -1281,6 +1321,12 @@ static void LoadInternal(DatabaseInstance &instance) {
 
     auto searchUsingAlexIndex = PragmaFunction::PragmaCall("alex_find",functionAlexFind,{LogicalType::VARCHAR,LogicalType::VARCHAR},{});
     ExtensionUtil::RegisterFunction(instance,searchUsingAlexIndex);
+
+    auto findSize = PragmaFunction::PragmaCall("alex_size",functionAlexSize,{LogicalType::VARCHAR},{});
+    ExtensionUtil::RegisterFunction(instance,findSize);
+
+    auto auxillaryStorageSizes = PragmaFunction::PragmaCall("auxillary_storage_size",functionAuxStorage,{LogicalType::VARCHAR},{});
+    ExtensionUtil::RegisterFunction(instance,auxillaryStorageSizes);
 
     // auto searchUsingAlexIndexB = PragmaFunction::PragmaCall("alex_findb",functionAlexFind,{LogicalType::VARCHAR,LogicalType::BIGINT},{});
     // ExtensionUtil::RegisterFunction(instance,searchUsingAlexIndexB);
