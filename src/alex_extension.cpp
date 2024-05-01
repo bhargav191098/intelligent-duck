@@ -21,6 +21,8 @@
 #include "utils.h"
 #include <chrono>
 #include <numeric>
+#include<iomanip>
+#include <iostream>
 
 #define DOUBLE_KEY_TYPE double
 #define GENERAL_PAYLOAD_TYPE double
@@ -43,6 +45,8 @@ alex::Alex<DOUBLE_KEY_TYPE, INDEX_PAYLOAD_TYPE> double_alex_index;
 alex::Alex<INT64_KEY_TYPE, INDEX_PAYLOAD_TYPE> big_int_alex_index;
 alex::Alex<UNSIGNED_INT64_KEY_TYPE, INDEX_PAYLOAD_TYPE> unsigned_big_int_alex_index;
 alex::Alex<INT_KEY_TYPE, INDEX_PAYLOAD_TYPE> index;
+
+map<string,pair<string,string>> index_type_table_name_map;
 
 static QualifiedName GetQualifiedName(ClientContext &context, const string &qname_str) {
 	auto qname = QualifiedName::Parse(qname_str);
@@ -96,17 +100,29 @@ std::vector<vector<unique_ptr<Base> > > results;
 
 void functionTryAlex(){}
 
-void display_row(int row_id){
+template<typename T> 
+void printElement(T t, const int& width){
+    const char separator    = ' ';
+    std::cout << std::setw(width) << std::setfill(separator) << t;
+}
+
+void display_row(int row_id,vector<string>columnNames){
     vector<unique_ptr<Base>>& vec = results.at(row_id);
+    int num_width = 10;
+
+    for(string colName:columnNames){
+        printElement(colName,num_width);
+    }
+    std::cout<<"\n";
     for(int i=0;i<vec.size();i++){
         if (auto* intData = dynamic_cast<IntData*>(vec[i].get())) {
-            std::cout << "Int Value: " << intData->value << std::endl;
+            printElement(intData->value,num_width);
         } else if (auto* doubleData = dynamic_cast<DoubleData*>(vec[i].get())) {
-            std::cout << "Double Value: " << doubleData->value << std::endl;
+            printElement(doubleData->value,num_width);
         } else if (auto* stringData = dynamic_cast<StringData*>(vec[i].get())) {
-            std::cout << "String Value: " << stringData->value << std::endl;
+            printElement(stringData->value,num_width);
         } else if (auto* boolData = dynamic_cast<BoolData*>(vec[i].get())) {
-            std::cout << "Boolean Value: " << boolData->value << std::endl;
+            printElement(boolData->value,num_width);
         }
     }
 }
@@ -244,10 +260,6 @@ void functionLoadBenchmark(ClientContext &context, const FunctionParameters &par
         load_benchmark_data_into_table<UNSIGNED_INT64_KEY_TYPE,GENERAL_PAYLOAD_TYPE>(benchmarkFile,benchmarkFileType,con,tableName,NUM_KEYS,num_batches_insert,per_batch);
     }
 
-}
-
-void functionSearchAlex(ClientContext &context, const FunctionParameters &parameters){
-    std::cout<<"Within search alex call "<<std::endl;
 }
 
 double calculateAverage(const std::vector<double>& v) {
@@ -1267,15 +1279,19 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
         std::string columnTypeName = column_type.ToString();
         if(columnTypeName == "DOUBLE"){
             bulkLoadIntoIndex<DOUBLE_KEY_TYPE,INDEX_PAYLOAD_TYPE>(con,table_name,column_index);
+            index_type_table_name_map.insert({"double",{table_name,column_name}});
         }
         else if(columnTypeName == "BIGINT"){
             bulkLoadIntoIndex<INT64_KEY_TYPE,INDEX_PAYLOAD_TYPE>(con,table_name,column_index);
+            index_type_table_name_map.insert({"bigint",{table_name,column_name}});
         }
         else if(columnTypeName == "UBIGINT"){
             bulkLoadIntoIndex<UNSIGNED_INT64_KEY_TYPE,INDEX_PAYLOAD_TYPE>(con,table_name,column_index);
+            index_type_table_name_map.insert({"ubigint",{table_name,column_name}});
         }
         else if(columnTypeName == "INTEGER"){
             bulkLoadIntoIndex<INT_KEY_TYPE,INDEX_PAYLOAD_TYPE>(con,table_name,column_index);
+            index_type_table_name_map.insert({"int",{table_name,column_name}});
         }
         else{
             std::cout<<"Unsupported column type for alex indexing (for now) "<<"\n";
@@ -1633,11 +1649,18 @@ void functionAlexFind(ClientContext &context, const FunctionParameters &paramete
         auto payload = index.get_payload(key_);
         if(payload){
             std::cout<<"Payload found \n";
-            display_row(*payload);
+            pair<string,string>tab_col = index_type_table_name_map["int"];
+            std::string table_name = tab_col.first;
+            QualifiedName name = GetQualifiedName(context,table_name);
+            auto &table = Catalog::GetEntry<TableCatalogEntry>(context, name.catalog, name.schema, name.name);
+            auto &columnList = table.GetColumns();
+            vector<string>columnNames = columnList.GetColumnNames();
+            display_row(*payload,columnNames);
         }
         else{
             std::cout<<"Key not found!\n";
         }
+        std::cout<<"\n";
     }
     else{
         uint64_t key_ = std::stoull(key);
@@ -1715,9 +1738,6 @@ static void LoadInternal(DatabaseInstance &instance) {
 
     auto create_alex_index_function = PragmaFunction::PragmaCall("create_alex_index", createAlexIndexPragmaFunction, {LogicalType::VARCHAR, LogicalType::VARCHAR}, LogicalType::INVALID);
     ExtensionUtil::RegisterFunction(instance, create_alex_index_function);
-
-    auto searchAlexDummy = PragmaFunction::PragmaCall("search_alex", functionSearchAlex, {LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::INTEGER},{});
-    ExtensionUtil::RegisterFunction(instance, searchAlexDummy);
 
     // The arguments for the load benchmark data function are the table name, benchmark name and the number of elements to bulk load.
     auto loadBenchmarkData = PragmaFunction::PragmaCall("load_benchmark",functionLoadBenchmark,{LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::INTEGER,LogicalType::INTEGER},{});
