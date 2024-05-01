@@ -19,7 +19,6 @@ long long count_bits(long long x) {
 static __inline__ long long _mm_popcnt_u64(unsigned long long __A)
 {
   return __builtin_popcountll(__A);
-  //return count_bits(__A);
 }
 
 static __inline__ unsigned long long _tzcnt_u64( unsigned long long __A )

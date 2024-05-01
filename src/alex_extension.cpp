@@ -29,6 +29,7 @@
 #define INDEX_PAYLOAD_TYPE double
 
 #define INT64_KEY_TYPE int64_t
+#define INT_KEY_TYPE int
 #define UNSIGNED_INT64_KEY_TYPE uint64_t
 #define PAYLOAD_TYPE double
 
@@ -41,7 +42,7 @@ namespace duckdb {
 alex::Alex<DOUBLE_KEY_TYPE, INDEX_PAYLOAD_TYPE> double_alex_index;
 alex::Alex<INT64_KEY_TYPE, INDEX_PAYLOAD_TYPE> big_int_alex_index;
 alex::Alex<UNSIGNED_INT64_KEY_TYPE, INDEX_PAYLOAD_TYPE> unsigned_big_int_alex_index;
-alex::Alex<DOUBLE_KEY_TYPE, INDEX_PAYLOAD_TYPE> index;
+alex::Alex<INT_KEY_TYPE, INDEX_PAYLOAD_TYPE> index;
 
 static QualifiedName GetQualifiedName(ClientContext &context, const string &qname_str) {
 	auto qname = QualifiedName::Parse(qname_str);
@@ -236,6 +237,7 @@ void functionLoadBenchmark(ClientContext &context, const FunctionParameters &par
     else if(benchmarkName.compare("ycsb")==0){
         benchmarkFile = "/Users/bhargavkrish/Desktop/USC/Duck_Extension/trial-3/intelligent-duck/src/ycsb-200M.bin.data";
         benchmarkFileType = "binary";
+        std::cout<<"Table name "<<tableName<<"\n";
         CREATE_QUERY = "CREATE TABLE "+tableName+"(key UBIGINT , payload double);";
         executeQuery(con,CREATE_QUERY);
         //Args: Benchmark Key Type, Benchmark Payload Type, Benchmark File, Benchmark File Type, conn object, table name, NUM_KEYS,num_batches_insert, per_batch
@@ -438,9 +440,10 @@ void runLookupBenchmarkOneBatchART(duckdb::Connection& con,std::string benchmark
    vector<double> payloads;
    vector<K>keys;
    std::cout<<"benchmark name "<<benchmark_name<<"\n";
-   std::unique_ptr<PreparedStatement> prepare = con.Prepare("SELECT payload FROM "+benchmark_name+" WHERE key = $1");
+   
    //std::string lookup_query = "SELECT key from "+benchmark_name+" where key = ";
    vector<K>query_keys;
+   std::string in_clause = "";
    for(int i=0;i<results.size();i++){
         vector<unique_ptr<Base>>& vec = results.at(i);
         if(typeid(K).name() == typeid(INT64_KEY_TYPE).name()){
@@ -459,9 +462,14 @@ void runLookupBenchmarkOneBatchART(duckdb::Connection& con,std::string benchmark
         // std::ostringstream stream;
         // stream << key;
         // std::string ressy = stream.str();
+        if(i!=0){
+            in_clause += ",";
+        }
+        in_clause += std::to_string(query_keys[i]);
         
     }
     double sum = 0;
+    std::unique_ptr<PreparedStatement> prepare = con.Prepare("SELECT payload FROM "+benchmark_name+" WHERE key IN (" + in_clause + ")");
     // for(int i=0;i<payloads.size();i++){
     //     sum += payloads[i];
     // }
@@ -472,13 +480,9 @@ void runLookupBenchmarkOneBatchART(duckdb::Connection& con,std::string benchmark
     //std::shuffle(keys.begin(), keys.end(), g);
     std::cout<<"Keys have been shuffled!\n";
     auto start = std::chrono::high_resolution_clock::now();
-    for(int i=0;i<query_keys.size();i++){
-        //std::string query = queries[i];
-        std::unique_ptr<QueryResult> res = prepare->Execute(query_keys[i]);
-        
-        if(res->HasError()){
-            std::cout<<"Error in query "<<"\n";
-        }
+    std::unique_ptr<QueryResult> res = prepare->Execute();
+    if(res->HasError()){
+        std::cout<<"Error in query "<<"\n";
     }
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed_seconds = end - start;
@@ -919,6 +923,12 @@ void print_stats(){
         std::cout<<"Number of data nodes: "<<stats.num_data_nodes<<"\n";
         std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n"; 
         std::cout<<"Index size after bulk loading "<<double_alex_index.size()<<"\n";
+        std::cout<<"Num expand and scales :"<<stats.num_expand_and_scales<<"\n";
+        std::cout<<"Num expand and retrain :"<<stats.num_expand_and_retrains<<"\n";
+        std::cout<<"Num downward splits : "<<stats.num_downward_splits<<"\n";
+        std::cout<<"Num sideways splits : "<<stats.num_sideways_splits<<"\n";
+        std::cout<<"Num model splits : "<<stats.num_model_node_splits<<"\n";
+        std::cout<<"Num model expansions : "<<stats.num_model_node_expansions<<"\n";
         std::cout<<"Index created successfully "<<"\n";
     }
     else if(typeid(K)==typeid(UNSIGNED_INT64_KEY_TYPE)){
@@ -927,8 +937,30 @@ void print_stats(){
         std::cout<<"Number of keys : "<<stats.num_keys<<"\n";
         std::cout<<"Number of model nodes : "<<stats.num_model_nodes<<"\n";
         std::cout<<"Number of data nodes: "<<stats.num_data_nodes<<"\n";
-        std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n"; 
+        std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n";
+        std::cout<<"Num expand and scales :"<<stats.num_expand_and_scales<<"\n";
+        std::cout<<"Num expand and retrain :"<<stats.num_expand_and_retrains<<"\n";
+        std::cout<<"Num downward splits : "<<stats.num_downward_splits<<"\n";
+        std::cout<<"Num sideways splits : "<<stats.num_sideways_splits<<"\n";
+        std::cout<<"Num model splits : "<<stats.num_model_node_splits<<"\n";
+        std::cout<<"Num model expansions : "<<stats.num_model_node_expansions<<"\n"; 
         std::cout<<"Index size after bulk loading "<<unsigned_big_int_alex_index.size()<<"\n";
+        std::cout<<"Index created successfully "<<"\n";
+    }
+    else if(typeid(K)==typeid(INT_KEY_TYPE)){
+        auto stats = index.get_stats();
+        std::cout<<"Stats about the index \n";
+        std::cout<<"Number of keys : "<<stats.num_keys<<"\n";
+        std::cout<<"Number of model nodes : "<<stats.num_model_nodes<<"\n";
+        std::cout<<"Number of data nodes: "<<stats.num_data_nodes<<"\n";
+        std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n";
+        std::cout<<"Num expand and scales :"<<stats.num_expand_and_scales<<"\n";
+        std::cout<<"Num expand and retrain :"<<stats.num_expand_and_retrains<<"\n";
+        std::cout<<"Num downward splits : "<<stats.num_downward_splits<<"\n";
+        std::cout<<"Num sideways splits : "<<stats.num_sideways_splits<<"\n";
+        std::cout<<"Num model splits : "<<stats.num_model_node_splits<<"\n";
+        std::cout<<"Num model expansions : "<<stats.num_model_node_expansions<<"\n"; 
+        std::cout<<"Index size after bulk loading "<<index.size()<<"\n";
         std::cout<<"Index created successfully "<<"\n";
     }
     else{
@@ -937,7 +969,13 @@ void print_stats(){
         std::cout<<"Number of keys : "<<stats.num_keys<<"\n";
         std::cout<<"Number of model nodes : "<<stats.num_model_nodes<<"\n";
         std::cout<<"Number of data nodes: "<<stats.num_data_nodes<<"\n";
-        std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n"; 
+        std::cout<<"Cost computation time : "<<stats.cost_computation_time<<"\n";
+        std::cout<<"Num expand and scales :"<<stats.num_expand_and_scales<<"\n";
+        std::cout<<"Num expand and retrain :"<<stats.num_expand_and_retrains<<"\n";
+        std::cout<<"Num downward splits : "<<stats.num_downward_splits<<"\n";
+        std::cout<<"Num sideways splits : "<<stats.num_sideways_splits<<"\n";
+        std::cout<<"Num model splits : "<<stats.num_model_node_splits<<"\n";
+        std::cout<<"Num model expansions : "<<stats.num_model_node_expansions<<"\n"; 
         std::cout<<"Index size after bulk loading "<<big_int_alex_index.size()<<"\n";
         std::cout<<"Index created successfully "<<"\n";
     }
@@ -1096,6 +1134,54 @@ void bulkLoadIntoIndex<UNSIGNED_INT64_KEY_TYPE,INDEX_PAYLOAD_TYPE>(duckdb::Conne
     print_stats<UNSIGNED_INT64_KEY_TYPE>();
 }
 
+template<>
+void bulkLoadIntoIndex<INT_KEY_TYPE,INDEX_PAYLOAD_TYPE>(duckdb::Connection & con,std::string table_name,int column_index){
+/*
+    Phase 1: Load the data from the table.
+    */
+    string query = "SELECT * FROM "+table_name+";";
+    unique_ptr<MaterializedQueryResult> result = con.Query(query);
+    results = result->getContents();
+    int num_keys = results.size();
+    std::cout<<"Num Keys : "<<num_keys<<"\n";
+
+   /*
+    Phase 2: Bulk load the data from the results vector into the pair array that goes into the index.
+   */
+   std::pair<INT_KEY_TYPE,INDEX_PAYLOAD_TYPE>* bulk_load_values = new std::pair<INT_KEY_TYPE,INDEX_PAYLOAD_TYPE>[num_keys];
+    std::cout<<"Col index "<<column_index<<"\n";    
+    int max_key = INT_MIN;
+    for (int i=0;i<results.size();i++){
+        int row_id = i;
+        //std::cout<<"before key"<<"\n";
+        auto rrr = results[i][column_index].get();
+        
+        INT_KEY_TYPE key_ = dynamic_cast<IntData*>(rrr)->value;
+        double value_ = dynamic_cast<DoubleData*>(results[i][column_index+1].get())->value;
+        
+        //std::cout<<"after key"<<"\n";
+        bulk_load_values[i] = {key_,i};
+    }
+    /**
+     Phase 3: Sort the bulk load values array based on the key values.
+    */
+   //Measure time 
+    
+    auto start_time = std::chrono::high_resolution_clock::now();
+    std::sort(bulk_load_values,bulk_load_values+num_keys,[](auto const& a, auto const& b) { return a.first < b.first; });
+    
+    /*
+    Phase 4: Bulk load the sorted values into the index.
+    */
+    
+    index.bulk_load(bulk_load_values, num_keys);
+    auto end_time = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end_time - start_time;
+    std::cout << "Time taken to bulk load: " << elapsed_seconds.count() << " seconds\n";
+    std::cout<<"Bulk Loaded! \n";
+    print_stats<INT_KEY_TYPE>();
+}
+
 /**
  * Index Creation
  * 
@@ -1187,6 +1273,9 @@ void createAlexIndexPragmaFunction(ClientContext &context, const FunctionParamet
         }
         else if(columnTypeName == "UBIGINT"){
             bulkLoadIntoIndex<UNSIGNED_INT64_KEY_TYPE,INDEX_PAYLOAD_TYPE>(con,table_name,column_index);
+        }
+        else if(columnTypeName == "INTEGER"){
+            bulkLoadIntoIndex<INT_KEY_TYPE,INDEX_PAYLOAD_TYPE>(con,table_name,column_index);
         }
         else{
             std::cout<<"Unsupported column type for alex indexing (for now) "<<"\n";
@@ -1537,6 +1626,17 @@ void functionAlexFind(ClientContext &context, const FunctionParameters &paramete
         }
         else{
             std::cout<<"Payload not found "<<"\n";
+        }
+    }
+    else if(index_type=="int"){
+        int key_ = std::stoi(key);
+        auto payload = index.get_payload(key_);
+        if(payload){
+            std::cout<<"Payload found \n";
+            display_row(*payload);
+        }
+        else{
+            std::cout<<"Key not found!\n";
         }
     }
     else{
