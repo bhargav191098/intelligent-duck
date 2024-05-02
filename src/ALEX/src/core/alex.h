@@ -644,7 +644,7 @@ class Alex {
   // The number of elements should be num_keys.
   // The index must be empty when calling this method.
   void bulk_load(const V values[], int num_keys) {
-    std::cout<<"Num keys "<<num_keys<<std::endl;
+    //std::cout<<"Num keys "<<num_keys<<std::endl;
     if (stats_.num_keys > 0 || num_keys <= 0) {
       return;
     }
@@ -658,7 +658,7 @@ class Alex {
     T min_key = values[0].first;
     T max_key = values[num_keys - 1].first;
 
-    std::cout<<"Min key "<<min_key<<" Max key "<<max_key<<std::endl;
+    //std::cout<<"Min key "<<min_key<<" Max key "<<max_key<<std::endl;
     root_node_->model_.a_ = 1.0 / (max_key - min_key);
     root_node_->model_.b_ = -1.0 * min_key * root_node_->model_.a_;
 
@@ -668,14 +668,14 @@ class Alex {
     data_node_type::build_model(values, num_keys, &root_data_node_model,
                                 params_.approximate_model_computation);
     DataNodeStats stats;
-    std::cout<<"After build model"<<"\n";
+    //std::cout<<"After build model"<<"\n";
     root_node_->cost_ = data_node_type::compute_expected_cost(
         values, num_keys, data_node_type::kInitDensity_,
         params_.expected_insert_frac, &root_data_node_model,
         params_.approximate_cost_computation, &stats);
 
     // Recursively bulk load
-    std::cout<<"Calling bulk load "<<"\n";
+    //std::cout<<"Calling bulk load "<<"\n";
     bulk_load_node(values, num_keys, root_node_, num_keys,
                    &root_data_node_model);
 
