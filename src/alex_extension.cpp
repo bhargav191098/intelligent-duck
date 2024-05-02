@@ -1585,9 +1585,13 @@ void functionAlexFind(ClientContext &context, const FunctionParameters &paramete
 
     if(index_type == "double"){
         double key_ = std::stod(key);
+        auto time_start = std::chrono::high_resolution_clock::now();
         auto payload = double_alex_index.get_payload(key_);
+        auto time_end = std::chrono::high_resolution_clock::now();
         if(payload){
+            std::chrono::duration<double> elapsed_seconds = time_end - time_start;
             std::cout<<"Payload found "<<*payload<<"\n";
+            std::cout<<"\nTime taken : "<< elapsed_seconds.count()<<" seconds \n";
         }
         else{
             std::cout<<"Payload not found "<<"\n";
@@ -1595,9 +1599,13 @@ void functionAlexFind(ClientContext &context, const FunctionParameters &paramete
     }
     else if(index_type=="bigint"){
         int64_t key_ = std::stoll(key);
+        auto time_start = std::chrono::high_resolution_clock::now();
         auto payload = big_int_alex_index.get_payload(key_);
+        auto time_end = std::chrono::high_resolution_clock::now();
         if(payload){
+            std::chrono::duration<double> elapsed_seconds = time_end - time_start;
             std::cout<<"Payload found "<<*payload<<"\n";
+            std::cout<<"\nTime taken : "<< elapsed_seconds.count()<<" seconds \n";
         }
         else{
             std::cout<<"Payload not found "<<"\n";
@@ -1605,7 +1613,9 @@ void functionAlexFind(ClientContext &context, const FunctionParameters &paramete
     }
     else if(index_type=="int"){
         int key_ = std::stoi(key);
+        auto time_start = std::chrono::high_resolution_clock::now();
         auto payload = index.get_payload(key_);
+        auto time_end = std::chrono::high_resolution_clock::now();
         if(payload){
             std::cout<<"Payload found \n";
             pair<string,string>tab_col = index_type_table_name_map["int"];
@@ -1615,6 +1625,8 @@ void functionAlexFind(ClientContext &context, const FunctionParameters &paramete
             auto &columnList = table.GetColumns();
             vector<string>columnNames = columnList.GetColumnNames();
             display_row(*payload,columnNames);
+            std::chrono::duration<double> elapsed_seconds = time_end - time_start;
+            std::cout<<"\nTime taken : "<< elapsed_seconds.count()<<" seconds \n";
         }
         else{
             std::cout<<"Key not found!\n";
@@ -1623,9 +1635,13 @@ void functionAlexFind(ClientContext &context, const FunctionParameters &paramete
     }
     else{
         uint64_t key_ = std::stoull(key);
+        auto time_start = std::chrono::high_resolution_clock::now();
         auto payload = unsigned_big_int_alex_index.get_payload(key_);
+        auto time_end = std::chrono::high_resolution_clock::now();
         if(payload){
             std::cout<<"Payload found "<<*payload<<"\n";
+            std::chrono::duration<double> elapsed_seconds = time_end - time_start;
+            std::cout<<"\nTime taken : "<< elapsed_seconds.count()<<" seconds \n";
         }
         else{
             std::cout<<"Payload not found "<<"\n";
