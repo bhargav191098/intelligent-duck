@@ -474,11 +474,19 @@ void runLookupBenchmarkOneBatchART(duckdb::Connection& con,std::string benchmark
         // std::ostringstream stream;
         // stream << key;
         // std::string ressy = stream.str();
+        
+    }
+
+    //shuffle the query_key array
+    std::shuffle(query_keys.begin(), query_keys.end(), g);
+
+    for(int i=0;i<query_keys.size();i++){
+        std::cout<<"Key "<<query_keys[i]<<"\n";
         if(i!=0){
             in_clause += ",";
         }
+
         in_clause += std::to_string(query_keys[i]);
-        
     }
     double sum = 0;
     std::unique_ptr<PreparedStatement> prepare = con.Prepare("SELECT payload FROM "+benchmark_name+" WHERE key IN (" + in_clause + ")");
@@ -1439,7 +1447,7 @@ void runInsertionBenchmarkWorkload(duckdb::Connection& con,std::string benchmark
     for (int vti = 0; vti < to_insert; vti++) {
         //values[vti].first = keys[vti];
         K key = keys[vti+load_end_point];
-        std::cout<<key<<"\n";
+        //std::cout<<key<<"\n";
         double random_payload = static_cast<double>(gen_payload());
         values[vti] = {key,random_payload};
     }
@@ -1512,7 +1520,7 @@ void runInsertionBenchmarkWorkloadART(duckdb::Connection& con,std::string benchm
     for (int vti = 0; vti < to_insert; vti++) {
         //values[vti].first = keys[vti];
         K key = keys[vti+load_end_point];
-        std::cout<<key<<"\n";
+        //std::cout<<key<<"\n";
         double random_payload = static_cast<double>(gen_payload());
         values[vti] = {key,random_payload};
     }
