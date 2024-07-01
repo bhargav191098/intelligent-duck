@@ -481,7 +481,7 @@ void runLookupBenchmarkOneBatchART(duckdb::Connection& con,std::string benchmark
     std::shuffle(query_keys.begin(), query_keys.end(), g);
 
     for(int i=0;i<query_keys.size();i++){
-        std::cout<<"Key "<<query_keys[i]<<"\n";
+        //std::cout<<"Key "<<query_keys[i]<<"\n";
         if(i!=0){
             in_clause += ",";
         }
@@ -1349,20 +1349,56 @@ void functionInsertIntoTableAndIndex<UNSIGNED_INT64_KEY_TYPE>(duckdb::Connection
     }
 }
 
+template<>
+void functionInsertIntoTableAndIndex<int>(duckdb::Connection &con,std::string table_name,int key,DOUBLE_KEY_TYPE value){
+    // std::string query = "INSERT INTO "+table_name+" VALUES(";
+    // query+=std::to_string(key)+","+std::to_string(value)+");";
+
+    std::string query = "INSERT INTO " + table_name + " VALUES (?, ?)";
+    auto result = con.Query(query, key, value);
+    if(!result->HasError()){
+        std::cout<<"Insertion successful "<<"\n";
+        if(index.size()>0){
+            std::vector<unique_ptr<Base>> dataVector;
+            dataVector.push_back(make_uniq<IntData>(key));
+            dataVector.push_back(make_uniq<IntData>(value));
+            results.push_back(std::move(dataVector));
+            index.insert({key,results.size()-1});
+        }
+        else{
+            std::cout<<"Index is empty. So not updating it."<<"\n";
+        }
+    }
+    else{
+        std::cout<<"Insertion failed "<<"\n";
+    }
+}
+
 void functionInsertIntoTable(ClientContext &context, const FunctionParameters &parameters){
     std::string table_name = parameters.values[0].GetValue<string>();
     std::string key_type = parameters.values[1].GetValue<string>();
-    double key = parameters.values[2].GetValue<double>();
-    double value = parameters.values[3].GetValue<double>();
+    std::string key = parameters.values[2].GetValue<string>();
+    std::string value = parameters.values[3].GetValue<string>();
     duckdb::Connection con(*context.db);
     if(key_type=="double"){
-        functionInsertIntoTableAndIndex<double>(con,table_name,key,value);
+        double dkey = std::stod(key);
+        double dvalue = std::stod(value);
+        functionInsertIntoTableAndIndex<double>(con,table_name,dkey,dvalue);
     }
     else if(key_type=="bigint"){
-        functionInsertIntoTableAndIndex<INT64_KEY_TYPE>(con,table_name,key,value);
+        INT64_KEY_TYPE bkey = std::stoll(key);
+        double bvalue = std::stod(value);
+        functionInsertIntoTableAndIndex<INT64_KEY_TYPE>(con,table_name,bkey,bvalue);
+    }
+    else if(key_type =="int"){
+        int ikey = std::stoi(key);
+        double ivalue = std::stod(value);
+        functionInsertIntoTableAndIndex<int>(con,table_name,ikey,ivalue);
     }
     else{
-        functionInsertIntoTableAndIndex<UNSIGNED_INT64_KEY_TYPE>(con,table_name,key,value);
+        UNSIGNED_INT64_KEY_TYPE ukey = std::stoull(key);
+        double uvalue = std::stod(value);
+        functionInsertIntoTableAndIndex<UNSIGNED_INT64_KEY_TYPE>(con,table_name,ukey,uvalue);
     }
     
     //For double index:
@@ -1732,7 +1768,7 @@ static void LoadInternal(DatabaseInstance &instance) {
     auto create_art_index_function = PragmaFunction::PragmaCall("create_art_index",functionCreateARTIndex,{LogicalType::VARCHAR,LogicalType::VARCHAR},LogicalType::INVALID); 
     ExtensionUtil::RegisterFunction(instance,create_art_index_function);
     
-    auto insert_into_table_function = PragmaFunction::PragmaCall("insert_into_table",functionInsertIntoTable,{LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::DOUBLE,LogicalType::DOUBLE},{});
+    auto insert_into_table_function = PragmaFunction::PragmaCall("insert_into_table",functionInsertIntoTable,{LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::VARCHAR,LogicalType::VARCHAR},{});
     ExtensionUtil::RegisterFunction(instance,insert_into_table_function);
 
     //Benchmark name,index.

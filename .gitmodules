@@ -5,3 +5,6 @@
 [submodule "duckdb"]
 	path = duckdb
 	url = https://github.com/bhargav191098/duckdb.git
+[submodule "src/ALEX"]
+	path = src/ALEX
+	url = https://github.com/bhargav191098/ALEX.git
