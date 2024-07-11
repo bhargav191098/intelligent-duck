@@ -1,10 +1,19 @@
-# Alex
+# Alex Extension for DuckDB 
 
 This repository is based on https://github.com/duckdb/extension-template, check it out if you want to build and ship your own DuckDB extension.
 
+
 ---
 
-This extension, Alex, allow you to create an ALEX indexing structure for your database tables in DuckDB.
+The alex extension allows the user to create alex index structure for any integer-based data column of the table.
+
+## Benchmark for YCSB Dataset:
+
+![requests](https://github.com/bhargav191098/intelligent-duck/blob/main/graph-images/ycsb_lookup.png)
+
+![requests](https://github.com/bhargav191098/intelligent-duck/blob/main/graph-images/ycsb_memory_consumption.png)
+
+The Learned Indexing provides great throughput with less memory overhead. Obviously running it on x86 based CPUs allows even further boosts.
 
 
 ### Build steps
@@ -31,11 +40,11 @@ pragma create_alex_index('table_name','col_id');
 
 pragma search_alex('table_name','col_id',key);
 
-Currently working on loading benchmark datasets with the command :
-
 pragma benchmark('lognormal_benchmark','lognormal');
 
-Please download the lognormal dataset and place it in the same directory as alex_extension.cpp to use the benchmark command : otherwise will not work.
+Currently there are four benchmarking datasets - Lognormal, Longitudes, Longlat and YCSB.
+
+Please download the respective benchmarking datasets and place it in the same directory as alex_extension.cpp to use the benchmark command : otherwise will not work.
 
 
 ```
