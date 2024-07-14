@@ -2,9 +2,6 @@
 
 This repository is based on https://github.com/duckdb/extension-template, check it out if you want to build and ship your own DuckDB extension 🚀
 
-
----
-
 The alex extension allows the user to create alex index structure for any integer-based data column of the table.
 
 
@@ -35,7 +32,6 @@ To run the extension code, simply start the shell with `./build/release/duckdb`.
 
 Please download the respective benchmarking datasets and place it in the same directory as alex_extension.cpp to use the benchmark command : otherwise the benchmarking functionality will not work. 
 
-
 - `create_alex_index` : This pragma call automates the creation of ALEX indexes for specified columns in DuckDB tables. It validates table and column existence, identifies column types, and initiates bulk loading of the ALEX index based on the column's data type.
 
 - `alex_find` : This function facilitates key-based searches within ALEX indexes in DuckDB. It extracts the payload associated with the provided key. If a payload is found, it is displayed; otherwise, a message indicating that the payload was not found is returned. This pragma function streamlines the process of querying ALEX indexes for specific values, enhancing the efficiency of key-based retrievals in DuckDB.
@@ -51,7 +47,7 @@ alex_size pragma function retrieves and displays the total size, including model
 
 - `auxillary_storage_size` : auxillary_storage_size pragma function calculates the total size of auxiliary storage used by alex index structure.
 
-## Benchmark datasets :
+## Benchmark datasets
 
 - <a href = "https://drive.google.com/file/d/1zc90sD6Pze8UM_XYDmNjzPLqmKly8jKl/view">Longitudes (200M 8-byte floats)</a>
 - <a href = "https://drive.google.com/file/d/1mH-y_P>cLQ6p8kgAz9SB7ME4KeYAfRfmR/view">Longlat (200M 8-byte floats)</a>
@@ -59,19 +55,8 @@ alex_size pragma function retrieves and displays the total size, including model
 - <a href = "https://drive.google.com/file/d/1Q89-v4FJLEwIKL3YY3oCeOEs0VUuv5bD/view">YCSB (200M 8-byte unsigned ints)</a>
 
 
-## Benchmark for YCSB Dataset:
+## Evaluation graphs
 
-![requests](https://github.com/bhargav191098/intelligent-duck/blob/main/graph-images/ycsb_lookup.png)
-
-![requests](https://github.com/bhargav191098/intelligent-duck/blob/main/graph-images/ycsb_memory_consumption.png)
+<img src = "https://github.com/bhargav191098/intelligent-duck/blob/main/graph-images/benchmarks.png" height="800" width="600" />
 
 The Learned Indexing provides great throughput with less memory overhead. Obviously running it on x86 based CPUs allows even further boosts.
-
-```
-
-## Running the tests
-Different tests can be created for DuckDB extensions. The primary way of testing DuckDB extensions should be the SQL tests in `./test/sql`. These SQL tests can be run using:
-```sh
-make test
-```
-
